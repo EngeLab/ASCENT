@@ -1,0 +1,86 @@
+cells_dna:  resources/seedfiles/SKZ02201_HCT.tsv
+cells_rna: ''
+metadata: ''  # plate_id, patient_id, sex required
+outdir: results/HCT
+
+path: 
+  temp: /tmp
+  dnain: /wrk/data/human_genomic/fastq
+  dnaout: /wrk/data/human_genomic/aligned
+  rnain: /wrk/data/human/fastq
+  rnaout: /wrk/data/human/aligned
+
+ref: 
+  # 241216: Update to GDC ref 
+  fasta: /wrk/resources/genomes/grch38-gdc/grch38.d1.vd1.ercc.fa
+  genes: /wrk/resources/genomes/hg38-iGenome-ERCC/hg38_RefSeq.bed
+  # For RNA alignment (STAR)
+  rna_ref_dir: /wrk/resources/genomes/grch38-gdc/star_index
+  rna_gtf: /wrk/resources/genomes/grch38-gdc/gencode.v36.filtered.gtf
+  # Other DNA resources
+  chr_list: resources/grch38-chrarms.tsv
+  chr_list_intersect: /wrk/resources/genomes/grch38-gdc/grch38.d1.vd1.ercc.genome
+  genome_bed: /wrk/resources/genomes/grch38-gdc/grch38.d1.vd1.ercc.bed
+  # Encode consortium blacklisted regions
+  blacklist: /wrk/resources/genomes/grch38-gdc/grch38_encode_exclusion_list.bed
+  # Mappability with umap, downloaded from: https://bismap.hoffmanlab.org. Ranges of mappable regions (score=1). Sorted -k1,1V -k2,2n
+  maptrack: /wrk/resources/genomes/grch38-gdc/grch38.k36.umap.sorted.bed
+  # Optional, only used for plotting in badbins
+  # centromeres: 
+  # gaps: 
+  gene_info: /wrk/resources/genomes/grch38-gdc/star_index/geneInfo.tab
+  mt_genes: /wrk/resources/genomes/grch38-gdc/gencode.v36.mt_genes.txt
+  cytobands: /wrk/resources/genomes/hg38-iGenome-ERCC/cytoBand.txt.gz
+  starfusion_ref: /wrk/resources/genomes/GRCh38_gencode_v44_CTAT_STARFusion/ctat_genome_lib_build_dir
+
+dna:
+  binsize: [10000] #Can run multiple
+  downsample: [20000, 30000, 50000, 60000, 70000, 80000, 900000,100000, 200000,300000,400000] #For paper specific analysis
+  # Bin-level filters
+  bin_min_map: 0.8
+  bin_min_gc: 0.2
+  # Optional calc "bad bins" from diploid cells
+  # Files with dna_library_id, fq1, fq2 for normal/diploid cells
+  normals_bins: resources/seedfiles/normals_37bp_231206.txt
+  # Optional scaling to normal diploid cells
+  normalize_to_panel: True
+  normals_scaling: resources/seedfiles/normals_37bp_231206.txt
+  exclude_chrY: False
+  # Minimum MAPQ score to use for binned reads
+  min_mapq: 20
+  # Maximum insert size for fragment analysis
+  max_insert: 1000
+  min_insert: 20
+  # Minimum read pairs / cell
+  min_count: 60000
+  # Max duplicate fraction
+  max_dup_frac: 0.50
+  # Ploidy scaling factor heuristics
+  min_scale_factor: 1.2
+  max_scale_factor: 4.5 
+  # Single-cell joint segmentation and clustering
+  gamma: [10]
+  dim_reduction: ["umap"] # umap, lv, L1 recognized
+  # Exclude S/M-phase cells upfront clustering
+  exclude_sphase: False
+  min_bins_per_segment: 10
+  min_cells_per_cluster: 6
+  kmeans_max: 12
+  kmeans_threshold: 0.4
+  # Pruning params (clone-level)
+  prune_threshold1: 5
+  prune_threshold2: 50
+  tree_method: "nj"
+  # Truncate copy number in single-cell/metacell plots
+  plot_max_cn: 8
+  patient_params: ''
+  normals_llr: /wrk/resources/dntr/normal_cells.37bp.231206.txt
+
+rna:
+  min_count: 10000
+  min_genes: 500
+  # Lower quantile cutoff for QC
+  quantile_cut: 0.005
+  quantile_gene: "ENSG00000075624"
+  count_multimappers: False
+
