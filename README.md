@@ -23,6 +23,7 @@ One of the normalisations performed in ASCENT depends on having normal cells fro
 In the resources folder we include bincounts that can be used for experiments run on Nextseq 550 (2x37bp) and Novaseq 6000 (1x150bp), with resolutions 40kb-500kb. For higher resolution (as is recommended) we share the files through figshare. 
 
 Where we got the reference genomes: 
+
 We aligned against Grch38, d1, vd1 obtained from here https://gdc.cancer.gov/about-data/gdc-data-processing/gdc-reference-files. 
 
 We used an exclusion list from encode from here https://www.encodeproject.org/files/ENCFF356LFX/, for genome build Grch38. 
