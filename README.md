@@ -16,7 +16,7 @@ A configfile denoting parameters and paths for each run (see config/HCT.yaml)
 
 A seedfile with the columns cell, fq1, fq2 with cell_id, and full paths to fq1 and fq2. 
 
-In the resource file there are a lot of the files needed to run the pipeline, however larger files are available through figshare, alternatively any other reference can be used. 
+In the resource file there are a lot of the files needed to run the pipeline, however larger files are available through figshare, by running Create_Filtered_Snps.sh and following the instructions in Download_Phased_Haplotypes
 
 Specifically about normal cells in resources/figshare: 
 One of the normalisations performed in ASCENT depends on having normal cells from the same sequencer, with the same read length as your experiment was performed on. This is not necessary, but if those are available it is recommended, as it decreases noise and increases both segmentation accuracy and scaling accuracy. 
