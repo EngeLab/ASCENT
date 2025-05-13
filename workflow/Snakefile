@@ -1,0 +1,63 @@
+from snakemake.utils import min_version
+min_version("6.0.0")
+
+configfile: "config/config.yaml"
+
+# Paths
+out = config["outdir"]
+dna_dir = config["path"]["dnaout"] 
+rna_dir = config["path"]["rnaout"]
+phase_dir = out + "/phasing"
+fusion_dir = out + "/rna_fusions"
+
+# Load modules
+include: "rules/common.smk"
+include: "rules/dna.smk"
+#include: "rules/dna_llr.smk"
+include: "rules/clones.smk"
+include: "rules/rna.smk"
+include: "rules/fusion.smk"
+include: "rules/phasing.smk"
+include: "rules/qc.smk"
+include: "rules/medicc.smk"
+
+def get_targets():
+    targets = []
+    
+    if is_dna_analysis():
+        dna_patient_ids = get_patients_dna()
+        
+        # Optional filter for target patient (ex: -C target_patient="ALL1")
+        if "target_patient" in config:
+            dna_patient_ids = [pid for pid in dna_patient_ids if pid in config["target_patient"]]
+
+        targets.extend([
+            expand(out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv", patient_id=dna_patient_ids),
+            expand(out + "/{patient_id}/{patient_id}-clone_stats.txt", patient_id=dna_patient_ids),
+            #expand(out + "/{patient_id}/clones/{patient_id}-scps-{binsize}.txt", patient_id=dna_patient_ids, binsize=config["dna"]["binsize"]),
+            expand(out + "/{patient_id}/{patient_id}-baf.txt.gz", patient_id=dna_patient_ids), 
+            expand(out + "/{patient_id}/dna_bam_index_done", patient_id=dna_patient_ids)
+            #expand(out + "/{patient_id}/{patient_id}-copynumber_llr-{binsize}-{downsample}.tsv.gz", patient_id=dna_patient_ids, binsize=config["dna"]["binsize"], downsample=config["dna"]["downsample"])
+            #expand(out + "/{patient_id}/clones/{patient_id}-log_odds_df-20000.tsv", patient_id=dna_patient_ids),
+        ])
+    
+    if is_rna_analysis():
+        rna_patient_ids = get_patients_rna()
+        
+        # Optional filter for target patient (ex: -C target_patient="ALL1")
+        if "target_patient" in config:
+            rna_patient_ids = [pid for pid in rna_patient_ids if pid in config["target_patient"]]
+
+        targets.extend([
+            expand(out + "/{patient_id}/qc/{patient_id}-qc_rna.tsv", patient_id=rna_patient_ids),
+            expand(out + "/{patient_id}/{patient_id}-rna_counts.tsv.gz", patient_id=rna_patient_ids),
+            expand(out + "/{patient_id}/{patient_id}-rna_seurat.Rds", patient_id=rna_patient_ids)
+            #out + "/{patient_id}/rna_bam_index_done",
+            #fusion_dir + "/rna_fusions.txt"
+        ])
+            
+    return targets
+
+rule all:
+    input:
+        get_targets()

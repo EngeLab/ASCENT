@@ -1,0 +1,11 @@
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - eagle2 
+  - cellsnp-lite 
+  - samtools 
+  - tabix 
+  - bcftools
+  - gsl=2.7.0

@@ -1,0 +1,96 @@
+plate_id	patient_id	sex	subtype	tissue	timepoint	protocol	subset_cols
+VZA00101	ALL_other	male	B-other	peripheral blood	diagnosis	Smart-seq2	NA
+VZA00102	ALL_other	male	B-other	peripheral blood	diagnosis	Smart-seq2	NA
+VZA00602	ALL_other	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA01001	ALL1	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA01002	ALL1	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA01003	ALL1	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA01004	ALL1	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA01005	ALL1	female	HeH	bone marrow	diagnosis	Smart-seq2	NA
+VZA01006	ALL1	female	HeH	bone marrow	relapse	DNTR-seq	NA
+VZA01101	ALL2	male	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZD00101	ALL47	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZD00102	ALL47	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZD00103	ALL47	female	HeH	peripheral blood	day 2	DNTR-seq	NA
+VZD00104	ALL47	female	HeH	peripheral blood	day 3	DNTR-seq	NA
+VZD00105	ALL47	female	HeH	bone marrow	day 15	DNTR-seq	NA
+VZD00201	ALL35	female	t(1;19)	bone marrow	diagnosis	DNTR-seq	NA
+VZD00202	ALL35	female	t(1;19)	bone marrow	diagnosis	DNTR-seq	NA
+VZD00203	ALL35	female	t(1;19)	bone marrow	day 15	DNTR-seq	NA
+VZD00204	ALL35	female	t(1;19)	CSF	relapse	DNTR-seq	NA
+VZA01401	ALL3	female	B-other	bone marrow	relapse 2	DNTR-seq	NA
+VZA01402	ALL3	female	B-other	bone marrow	relapse 1	DNTR-seq	NA
+VZA01403	ALL3	female	B-other	bone marrow	relapse 1	DNTR-seq	NA
+VZA01404	ALL3	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA01405	ALL3	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+HCD00101	ALL3	female	B-other	bone marrow	relapse 1	DNTR-seq	NA
+HCD00201	ALL3	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+HCD00202	ALL3	female	B-other	bone marrow	relapse 2	DNTR-seq	NA
+VZA01501	ALL4	female	DS-ALL	bone marrow	relapse	DNTR-seq	NA
+VZA01502	ALL4	female	DS-ALL	bone marrow	relapse	DNTR-seq	NA
+VZA01503	ALL4	female	DS-ALL	bone marrow	diagnosis	DNTR-seq	NA
+VZA01504	ALL4	female	DS-ALL	bone marrow	diagnosis	DNTR-seq	NA
+VZA01901	ALL71	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA01903	ALL71	female	HeH	peripheral blood	day 5	DNTR-seq	1-12
+VZA01903	ALL71	female	HeH	bone marrow	day 15	DNTR-seq	13
+VZA01903	ALL71	female	HeH	bone marrow	diagnosis	DNTR-seq	14-24
+VZA01904	ALL71	female	HeH	bone marrow	day 15	DNTR-seq	1-13
+VZA02001	ALL64	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA02003	ALL64	female	HeH	bone marrow	day 15	DNTR-seq	NA
+VZA02101	ALL67	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
+VZA02102	ALL67	female	HeH	bone marrow	day 15	DNTR-seq	NA
+VZA02103	ALL67	female	HeH	peripheral blood	diagnosis	DNTR-seq	1-12
+VZA02103	ALL67	female	HeH	peripheral blood	day 2	DNTR-seq	13-24
+VZA02201	ALL68	male	HeH	peripheral blood	diagnosis	DNTR-seq	NA
+VZA02202	ALL68	male	HeH	peripheral blood	day 2	DNTR-seq	1-12
+VZA02202	ALL68	male	HeH	peripheral blood	day 5	DNTR-seq	13-24
+VZA02203	ALL68	male	HeH	bone marrow	day 15	DNTR-seq	NA
+VZA02301	ALL5	male	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA02302	ALL5	male	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA02303	ALL5	male	B-other	bone marrow	day 15	DNTR-seq	NA
+VZA02304	ALL5	male	B-other	bone marrow	day 29	DNTR-seq	1-16
+VZA02304	ALL5	male	B-other	bone marrow	day 29	DNTR-seq	17-18
+VZA02305	ALL5	male	B-other	bone marrow	day 15	DNTR-seq	NA
+VZA02401	ALL66	male	ETV6	bone marrow	diagnosis	DNTR-seq	NA
+VZA02402	ALL66	male	ETV6	bone marrow	diagnosis	DNTR-seq	NA
+VZA02403	ALL66	male	ETV6	bone marrow	diagnosis	DNTR-seq	NA
+VZA02404	ALL66	male	ETV6	bone marrow	day 15	DNTR-seq	NA
+VZA02405	ALL66	male	ETV6	bone marrow	day 29	DNTR-seq	1-9
+VZA02405	ALL66	male	ETV6	bone marrow	day 15	DNTR-seq	10-18
+VZA02405	ALL66	male	ETV6	peripheral blood	day 2	DNTR-seq	19-24
+VZA02406	ALL66	male	ETV6	bone marrow	day 15	DNTR-seq	1-18
+VZA02406	ALL66	male	ETV6	peripheral blood	day 2	DNTR-seq	19-24
+VZA02501	ALL55	male	MLL	peripheral blood	diagnosis	DNTR-seq	NA
+VZA02502	ALL55	male	MLL	bone marrow	relapse	DNTR-seq	NA
+VZA02503	ALL55	male	MLL	bone marrow	relapse	DNTR-seq	NA
+VZA02504	ALL55	male	MLL	bone marrow	day 15	DNTR-seq	NA
+VZA02505	ALL55	male	MLL	bone marrow	day 29	DNTR-seq	NA
+VZA02506	ALL55	male	MLL	bone marrow	day 15	DNTR-seq	1-12
+VZA02506	ALL55	male	MLL	bone marrow	day 29	DNTR-seq	13-24
+VZA02507	ALL55	male	MLL	bone marrow	day 15	DNTR-seq	1-12
+VZA02507	ALL55	male	MLL	bone marrow	day 29	DNTR-seq	13-24
+VZA02508	ALL55	male	MLL	peripheral blood	diagnosis	DNTR-seq	NA
+VZA02601	ALL6	female	ETV6	peripheral blood	diagnosis	DNTR-seq	NA
+VZA02602	ALL6	female	ETV6	peripheral blood	diagnosis	DNTR-seq	NA
+VZA02603	ALL6	female	ETV6	bone marrow	relapse 1	DNTR-seq	NA
+VZA02604	ALL6	female	ETV6	bone marrow	relapse 1	DNTR-seq	NA
+VZA02605	ALL6	female	ETV6	bone marrow	relapse 2	DNTR-seq	NA
+VZA02606	ALL6	female	ETV6	bone marrow	relapse 2	DNTR-seq	NA
+VZA02607	ALL6	female	ETV6	bone marrow	relapse 2d6	DNTR-seq	NA
+VZA02608	ALL6	female	ETV6	bone marrow	relapse 2d6	DNTR-seq	NA
+VZA02609	ALL6	female	ETV6	bone marrow	relapse 2d13	DNTR-seq	NA
+VZA02610	ALL6	female	ETV6	bone marrow	relapse 2d13	DNTR-seq	1-15
+VZA02610	ALL6	female	ETV6	bone marrow	relapse 2d6	DNTR-seq	16-24
+VZA02611	ALL6	female	ETV6	bone marrow	relapse 1d29	DNTR-seq	1-16
+VZA02611	ALL6	female	ETV6	bone marrow	relapse 2d10	DNTR-seq	17-24
+VZA02612	ALL6	female	ETV6	bone marrow	relapse 2d10	DNTR-seq	NA
+VZA02702	ALL40	NA	ETV6	bone marrow	relapse	DNTR-seq	NA
+VZA02704	ALL40	NA	ETV6	bone marrow	diagnosis	DNTR-seq	NA
+VZA02801	ALL42	NA	ETV6	bone marrow	diagnosis	DNTR-seq	NA
+VZA02803	ALL42	NA	ETV6	bone marrow	relapse	DNTR-seq	NA
+VZA03001	ALL7	female	B-other	bone marrow	day 15	DNTR-seq	NA
+VZA03002	ALL7	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA03003	ALL7	female	B-other	bone marrow	diagnosis	DNTR-seq	NA
+VZA02901	ALL8	female	HeH	bone marrow	day 15	DNTR-seq	1-16
+VZA02901	ALL8	female	HeH	bone marrow	diagnosis	DNTR-seq	17-24
+VZA02902	ALL8	female	HeH	bone marrow	diagnosis	DNTR-seq	NA
