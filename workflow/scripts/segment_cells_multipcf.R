@@ -152,6 +152,16 @@ plan("multicore", workers = snakemake@threads)
 chr.idx <- split(seq_len(nrow(mpcf.input.norm)), bins$chr)
 input.split <- lapply(chr.idx, function(i) mpcf.input.norm[i, , drop = FALSE])
 bins.split <- lapply(chr.idx, function(i) bins[i,])
+
+#mpcf does not run when a chr arm only contains one bin - this happens in some of the resolutions, like 40kb and 100kb for example (chr21p arm)
+bins.split <- lapply(bins.split, function(df) {
+  arm_counts <- table(df$arm)
+  df %>% filter(!(arm %in% names(arm_counts[arm_counts == 1])))
+})
+input.split <- Map(function(bins_df) {
+  mpcf.input.norm[which(bins$chr %in% bins_df$chr & bins$start %in% bins_df$start), , drop = FALSE]
+}, bins.split)
+
 cat(paste0("Running joint segmentation in ",pid," at gamma=",gamma," with fast=",mpcf_fast," (n=",sum(good.cells2)," filtered cells)...\n"))
 res.split <- safe_future_map2(input.split, bins.split, function(d, b)
   copynumber::multipcf(as.data.frame(d), pos.unit="bp", arms=b$arm, gamma=gamma, normalize=F, fast=mpcf_fast, verbose=F, return.est=F)
