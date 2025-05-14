@@ -552,6 +552,7 @@ plot_clone_heatmap(d, cn_slot="cn_b", show_chr=T, clone_types=NULL, highlight_du
 plot_clone_heatmap(d, cn_slot="final_ab", show_chr=T)
 dev.off()
 
+write_rds(d, snakemake@output[["cn_obj_out"]])
 
 
 #Prepare medicc object 

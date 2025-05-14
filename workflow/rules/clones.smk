@@ -176,7 +176,8 @@ rule haplotype_refined_clones:
     output:
        heatmap=out + "/{patient_id}/clones/{patient_id}-allele_specific-heatmap-g{gamma}-{binsize}.pdf",
        cmBAF=out + "/{patient_id}/clones/{patient_id}-cmBAFs-g{gamma}-{binsize}.pdf",
-       medicc=out + "/{patient_id}/clones/{patient_id}-medicc_input-g{gamma}-{binsize}.txt"
+       medicc=out + "/{patient_id}/clones/{patient_id}-medicc_input-g{gamma}-{binsize}.txt",
+       cn_obj_out=out + "/{patient_id}/clones/{patient_id}-final_clone_object-haplotyped-g{gamma}-{binsize}.Rds"
     script:
        "../scripts/haplotype_clones.R"
 
