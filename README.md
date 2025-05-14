@@ -11,14 +11,15 @@ snakemake --configfile=config.yaml --use-conda
 ```
 
 
-## Inputs
-A configfile denoting parameters and paths for each run (see config/HCT.yaml)
+## Input
+The input to ASCENT are single-cell WGS, demultiplexed fastq files. If paired scRNA-seq has been performed (like in DNTR-seq) then demultiplexed scRNA-seq fastq files can also be input. RNA-seq data is aligned and processed to identify cells in S or G2/M phase. If S/G2/M cells are identified they are removed before segmentation. 
 
-A seedfile with the columns cell, fq1, fq2 with cell_id, and full paths to fq1 and fq2. 
+To run ASCENT the user needs to update a config file denoting parameters and paths (see config/HCT.yaml) and a seedfile listing cell ids and paths to fq1 and fq2, and update the paths to haplotype and SNP information in the rule phasing.smk  
 
-In the resource file there are a lot of the files needed to run the pipeline, however larger files are available through figshare, by running Create_Filtered_Snps.sh and following the instructions in Download_Phased_Haplotypes
+The resources needed to run ASCENT are in one of three places: The resources folder, figshare or created by the user by running Create_Filtered_Snps or following the instructions in Download_Phased_Haplotypes or CreateStarIndex
 
-Specifically about normal cells in resources/figshare: 
+These resources are reference genomes, snps, haplotype information, exclusion lists and files needed for normalisation (gc, map and normal cells). 
+
 One of the normalisations performed in ASCENT depends on having normal cells from the same sequencer, with the same read length as your experiment was performed on. This is not necessary, but if those are available it is recommended, as it decreases noise and increases both segmentation accuracy and scaling accuracy. 
 In the resources folder we include bincounts that can be used for experiments run on Nextseq 550 (2x37bp) and Novaseq 6000 (1x150bp), with resolutions 40kb-500kb. For higher resolution (as is recommended) we share the files through figshare. 
 
@@ -29,7 +30,4 @@ We aligned against Grch38, d1, vd1 obtained from here https://gdc.cancer.gov/abo
 We used an exclusion list from encode from here https://www.encodeproject.org/files/ENCFF356LFX/, for genome build Grch38. 
 
 To perform phasing and haplotyping we downloaded data from here gs://gcp-public-data--gnomad/resources/hgdp_1kg/phased_haplotypes_v2 
-
-Paths need to be adjusted in the rule phasing.smk 
-
 
