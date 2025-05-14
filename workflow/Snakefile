@@ -13,7 +13,7 @@ fusion_dir = out + "/rna_fusions"
 # Load modules
 include: "rules/common.smk"
 include: "rules/dna.smk"
-#include: "rules/dna_llr.smk"
+include: "rules/dna_llr.smk"
 include: "rules/clones.smk"
 include: "rules/rna.smk"
 include: "rules/fusion.smk"
@@ -35,7 +35,8 @@ def get_targets():
             expand(out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv", patient_id=dna_patient_ids),
             expand(out + "/{patient_id}/{patient_id}-clone_stats.txt", patient_id=dna_patient_ids),
             expand(out + "/{patient_id}/{patient_id}-baf.txt.gz", patient_id=dna_patient_ids), 
-            expand(out + "/{patient_id}/dna_bam_index_done", patient_id=dna_patient_ids)
+            expand(out + "/{patient_id}/dna_bam_index_done", patient_id=dna_patient_ids),
+            expand(out + "/{patient_id}/medicc/g{gamma}-{binsize}/.medicc_done", patient_id=dna_patient_ids, binsize=config["dna"]["binsize"], gamma=config["dna"]["gamma"])
         ])
     
     if is_rna_analysis():
