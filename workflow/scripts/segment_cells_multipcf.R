@@ -153,11 +153,18 @@ chr.idx <- split(seq_len(nrow(mpcf.input.norm)), bins$chr)
 input.split <- lapply(chr.idx, function(i) mpcf.input.norm[i, , drop = FALSE])
 bins.split <- lapply(chr.idx, function(i) bins[i,])
 
+bins_dropped <- list()
+
 #mpcf does not run when a chr arm only contains one bin - this happens in some of the resolutions, like 40kb and 100kb for example (chr21p arm)
-bins.split <- lapply(bins.split, function(df) {
+for (i in seq_along(bins.split)) {
+  df <- bins.split[[i]]
   arm_counts <- table(df$arm)
-  df %>% filter(!(arm %in% names(arm_counts[arm_counts == 1])))
-})
+  drop_arms <- names(arm_counts[arm_counts == 1])
+  
+  bins_dropped[[i]] <- df %>% filter(arm %in% drop_arms)
+  bins.split[[i]] <- df %>% filter(!(arm %in% drop_arms))
+}
+
 input.split <- Map(function(bins_df) {
   mpcf.input.norm[which(bins$chr %in% bins_df$chr & bins$start %in% bins_df$start), , drop = FALSE]
 }, bins.split)
@@ -166,9 +173,30 @@ cat(paste0("Running joint segmentation in ",pid," at gamma=",gamma," with fast="
 res.split <- safe_future_map2(input.split, bins.split, function(d, b)
   copynumber::multipcf(as.data.frame(d), pos.unit="bp", arms=b$arm, gamma=gamma, normalize=F, fast=mpcf_fast, verbose=F, return.est=F)
 )
+
 # Combine back to joint res object
 res <- do.call(rbind, res.split)
-res[1:5,1:10]
+
+# Add back dropped bins (if any)
+if (length(bins_dropped) > 0) {
+  dropped_all <- do.call(rbind, bins_dropped)
+  input_dropped <- mpcf.input.norm[with(dropped_all, which(bins$chr %in% chr & bins$start %in% start)), , drop = FALSE]
+  
+  res_dropped <- data.frame(
+    chrom = sub("^chr", "", dropped_all$chr),
+    arm       = dropped_all$arm,
+    start.pos = dropped_all$start,
+    end.pos   = dropped_all$end,
+    n.probes  = 1,
+    input_dropped[, -c(1:2), drop = FALSE],
+    stringsAsFactors = FALSE,
+    check.names = FALSE
+  )
+  
+  res2 <- rbind(res, res_dropped)
+  res2$chrom <- factor(res2$chrom, levels = unique(res2$chrom)) 
+  res<-res2[order(res2$chrom, res2$start.pos), ]
+}
 write_tsv(res, snakemake@output[["mpcf"]])
 
 # Recalculate segment means: get segment means from matrix of gc-normalized counts (instead of using multipcf output)

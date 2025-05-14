@@ -20,7 +20,7 @@ rule segment_joint:
         min_scale=config["dna"]["min_scale_factor"],
         max_scale=config["dna"]["max_scale_factor"],
         cytoband_file=config["ref"]["cytobands"],
-    threads: 12
+    threads: 8
     script: "../scripts/segment_cells_multipcf.R"
 
 rule cnv_calc_scp_scCN:
