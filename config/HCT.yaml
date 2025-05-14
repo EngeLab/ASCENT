@@ -35,7 +35,7 @@ ref:
 
 dna:
   binsize: [10000] #Can run multiple
-  downsample: [20000, 30000, 50000, 60000, 70000, 80000, 900000,100000, 200000,300000,400000] #For paper specific analysis
+#  downsample: [20000, 30000, 50000, 60000, 70000, 80000, 900000,100000, 200000,300000,400000] #For paper specific analysis
   # Bin-level filters
   bin_min_map: 0.8
   bin_min_gc: 0.2
