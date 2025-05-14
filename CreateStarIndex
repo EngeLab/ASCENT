@@ -1,0 +1,5 @@
+#From To create star index (using files found on figshare in the folder Files for genome reference and exclusion lists): 
+STAR version=2.7.7a
+##### Command Line:
+STAR --runMode genomeGenerate --genomeDir star_index --genomeFastaFiles grch38.d1.vd1.ercc.fa --sjdbGTFfile gencode.v36.filtered.gtf --sjdbOverhang 67 --sjdbScore 1 --runThreadN 28
+
