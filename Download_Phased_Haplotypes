@@ -1,0 +1,10 @@
+Human Genome Diversity Project + gnomAD callset with phased genotypes (n~4000 individuals)
+https://gnomad.broadinstitute.org/downloads#v3-hgdp-1kg
+Downloaded with gsutil:
+gsutil -m cp -r gs://gcp-public-data--gnomad/resources/hgdp_1kg/phased_haplotypes .
+
+And then rename
+
+Renamed hgdp1kgp_chrX_non_par.full.shapeit5_rare.bcf
+to
+hgdp1kgp_{chr}.filtered.SNV_INDEL.phased.shapeit5.bcf
