@@ -1,4 +1,47 @@
 # DNA segmentation by cell
+#For downsampling and segmentation with llr (hypothesis free segmentation) exchange this rule for 
+#Current dna_llr.smk in pipeline 
+ 
+rule downsample_dna:
+    input:
+        cell="{cell}-bincounts-{binsize}.tsv",
+        good_bins="resources/goodbins-{binsize}.bed"
+    output:
+        cell_out="{cell}-bincounts-{binsize}-{downsample}.tsv"
+    params:
+        downsample="{downsample}"
+    script: "../scripts/Downsample.R"
+
+rule segment_downsampled_dna:
+    input:
+        cell="{cell}-bincounts-{binsize}-{downsample}.tsv",
+        map="resources/fixed-{binsize}.map.txt",
+        gc="resources/fixed-{binsize}.gc.txt",
+        bins="resources/fixed-{binsize}.bed",
+        badbins="resources/badbins-{binsize}.bed" if config["dna"]["normalize_to_panel"] else []
+    output:
+        seg="{cell}-segments-{binsize}-{downsample}.txt",
+        seg_cn="{cell}-segments_cn-{binsize}-{downsample}.txt",
+        cn="{cell}-copynumber-{binsize}-{downsample}.txt",
+        pdf_qc="{cell}-llr-qc-{binsize}-{downsample}.pdf",
+        cnv_png="{cell}-cnv-{binsize}-{downsample}.png",
+        cnv2_png="{cell}-cnv2-{binsize}-{downsample}.png",
+        normcounts="{cell}-normcounts-{binsize}-{downsample}.txt",
+        scalefactors="{cell}-scalefactors-{binsize}-{downsample}.txt"
+    params:
+        gc_min=config["dna"]["bin_min_gc"],
+        map_min=config["dna"]["bin_min_map"],
+        reads_per_window=config["dna"]["reads_per_window"] if "reads_per_window" in config["dna"].keys() else 300,
+        max_w=10000,
+        min_w=100,
+        min_scale=config["dna"]["min_scale_factor"],
+        max_scale=config["dna"]["max_scale_factor"],
+        cn_trunc=config["dna"]["plot_max_cn"],
+        src_general="workflow/scripts/general.R",
+        src_cpp="workflow/scripts/calcLLR.cpp"
+    script: "../scripts/call_breakpoints.R"
+
+
 rule segment_dna:
     input:
         cell="{cell}-bincounts-{binsize}.tsv",
@@ -32,11 +75,12 @@ rule segment_dna:
 rule concat_copynumber_llr:
     input: 
         lambda wildcards: expand(
-            os.path.join(dna_dir,"{cell}/{cell}-copynumber-{binsize}.txt"),
+            os.path.join(dna_dir,"{cell}/{cell}-copynumber-{binsize}-{downsample}.txt"),
             cell=get_cells_dna(wildcards.patient_id), 
-            binsize=wildcards.binsize
+            binsize=wildcards.binsize,
+            downsample=wildcards.downsample	
         )
-    output: out + "/{patient_id}/{patient_id}-copynumber_llr-{binsize}.tsv.gz"
+    output: out + "/{patient_id}/{patient_id}-copynumber_llr-{binsize}-{downsample}.tsv.gz"
     run:
         import gzip
         with gzip.open(output[0], 'wt') as writer:

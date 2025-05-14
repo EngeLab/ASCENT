@@ -34,11 +34,8 @@ def get_targets():
         targets.extend([
             expand(out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv", patient_id=dna_patient_ids),
             expand(out + "/{patient_id}/{patient_id}-clone_stats.txt", patient_id=dna_patient_ids),
-            #expand(out + "/{patient_id}/clones/{patient_id}-scps-{binsize}.txt", patient_id=dna_patient_ids, binsize=config["dna"]["binsize"]),
             expand(out + "/{patient_id}/{patient_id}-baf.txt.gz", patient_id=dna_patient_ids), 
             expand(out + "/{patient_id}/dna_bam_index_done", patient_id=dna_patient_ids)
-            #expand(out + "/{patient_id}/{patient_id}-copynumber_llr-{binsize}-{downsample}.tsv.gz", patient_id=dna_patient_ids, binsize=config["dna"]["binsize"], downsample=config["dna"]["downsample"])
-            #expand(out + "/{patient_id}/clones/{patient_id}-log_odds_df-20000.tsv", patient_id=dna_patient_ids),
         ])
     
     if is_rna_analysis():
