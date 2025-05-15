@@ -72,7 +72,7 @@ rule cluster_llr:
         gc="resources/fixed-{binsize}.gc.txt",
         bins="resources/fixed-{binsize}.bed",
         badbins="resources/badbins-{binsize}.bed" if config["dna"]["normalize_to_panel"] else [],
-        normal_bincounts="resources/normals_scaling-" + normals_scaling_id + "-{binsize}.tsv.gz" if config["dna"]["normalize_to_panel"] else [],
+        normal_bincounts="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize}.tsv.gz" if config["dna"]["normalize_to_panel"] else [],
         meta_per_cell=out + "/{patient_id}/{patient_id}-metadata_long.tsv",
         dna_qc=out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv",
         rna_phase=lambda wildcards: out + "/{patient_id}/{patient_id}-rna_phases.txt" if has_rna_data(wildcards.patient_id) and config["dna"]["exclude_sphase"] else []

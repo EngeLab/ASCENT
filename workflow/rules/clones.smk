@@ -4,7 +4,7 @@ rule segment_joint:
         goodbins="resources/goodbins-{binsize}.bed",
         map="resources/fixed-{binsize}.map.txt",
         gc="resources/fixed-{binsize}.gc.txt",
-        normal_bincounts="resources/normals_scaling-" + normals_scaling_id + "-{binsize}.tsv.gz",
+        normal_bincounts="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize}.tsv.gz",
         rna_phase=lambda wildcards: out + "/{patient_id}/{patient_id}-rna_phases.txt" if has_rna_data(wildcards.patient_id) and config["dna"]["exclude_sphase"] else [],
     output: 
         mpcf=out + "/{patient_id}/clones/{patient_id}-mpcf-g{gamma}-{binsize}.txt.gz",
@@ -145,7 +145,7 @@ rule refine_clones_automatic:
     input:
         clones=out + "/{patient_id}/clones/{patient_id}-clones-umap-g{gamma}-{binsize}.txt",
         counts=out +"/{patient_id}/{patient_id}-bincounts-{binsize_refine}.tsv.gz",
-        normal_cells="resources/normals_scaling-" + normals_scaling_id + "-{binsize_refine}.tsv.gz",
+        normal_cells="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize_refine}.tsv.gz",
         sf=out + "/{patient_id}/clones/{patient_id}-scalefactors-g{gamma}-{binsize}.txt",
         logodds=out + "/{patient_id}/clones/{patient_id}-log_odds_df-scCN-{binsize}-g{gamma}.tsv",
         bins="resources/fixed-{binsize_refine}.bed",
