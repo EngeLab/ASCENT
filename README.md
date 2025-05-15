@@ -5,10 +5,21 @@ ASCENT is an end-to-end method for direct-tagmentation based single-cell WGS (an
 
 The input to ASCENT are demultiplexed (paired end) fastq files, and the output are absolute single cell copynumbers, clones, allele specific copynumbers per clone, and clonal topology. 
 
-ASCENT is implemented within Snakemake and runs within conda environments to ensure reproducibility. Config files set parameters for each run, and is run with: 
+ASCENT is implemented within Snakemake and runs within conda environments to ensure reproducibility. 
+
+To run ASCENT create a dntr conda environment 
+
+```bash
+conda env create -f workflow/envs/dntr.yaml
+```
+
+Then edit a config file to set parameters for each run, and run with:
+
 ```bash
 snakemake --configfile=config.yaml --use-conda
 ```
+
+
 
 
 ## Input
