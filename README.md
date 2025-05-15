@@ -37,7 +37,7 @@ The output of ASCENT is organised in a result folder. All QC metrics are within 
 
 The clone folder includes multiple intermediate stages, at which the data should be scrutinized. We recommend running ultra-low coverage (60-500k reads per cell) data at 10-40kb resolution with gamma values for mpcf between 0.5-10. Both of these parameters are tunable within the config file. The gamma parameter is multiplied with number of samples within the mpcf function, so if there are many cells in a sample, the gamma value will be effectively higher, than in a sample with few cells. Therefore it is recommended to run 3-5 different gammas, and do a visual inspection of CNV heatmaps (result/patient/clones/patient-heatmap_revised-umap-g*-*.png) before continuing to refinement. Clonal refinement runs automatically within ASCENT, with a gamma value set in the config file. However it is often a good idea to run that code in a more interactive manner outside the pipeline, until a desired outcome is reached. By using the function plot_clone_detail(clone, region) the user can get a good idea if the gamma parameter is correct or not, or if some clones are a mixture of clones. 
 
-Medicc2 runs automatically within ASCENT, but to root the tree correctly in the diploid clone from the current sample it can be run outside the pipeline as well. 
+Medicc2 runs automatically within ASCENT, but to root the tree correctly in the "normal" clone from the current sample it can be run outside the pipeline to indicate which clone is normal.  
 
 
 
