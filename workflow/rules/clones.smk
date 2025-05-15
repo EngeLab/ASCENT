@@ -20,7 +20,7 @@ rule segment_joint:
         min_scale=config["dna"]["min_scale_factor"],
         max_scale=config["dna"]["max_scale_factor"],
         cytoband_file=config["ref"]["cytobands"],
-    threads: 8
+    threads: 12
     script: "../scripts/segment_cells_multipcf.R"
 
 rule cnv_calc_scp_scCN:
@@ -144,24 +144,24 @@ rule refine_clones_automatic:
     '''
     input:
         clones=out + "/{patient_id}/clones/{patient_id}-clones-umap-g{gamma}-{binsize}.txt",
-        counts=out +"/{patient_id}/{patient_id}-bincounts-{binsize}.tsv.gz",
-        normal_cells="resources/normals_scaling-" + normals_scaling_id + "-{binsize}.tsv.gz",
+        counts=out +"/{patient_id}/{patient_id}-bincounts-{binsize_refine}.tsv.gz",
+        normal_cells="resources/normals_scaling-" + normals_scaling_id + "-{binsize_refine}.tsv.gz",
         sf=out + "/{patient_id}/clones/{patient_id}-scalefactors-g{gamma}-{binsize}.txt",
         logodds=out + "/{patient_id}/clones/{patient_id}-log_odds_df-scCN-{binsize}-g{gamma}.tsv",
-        bins="resources/fixed-{binsize}.bed",
-        map="resources/fixed-{binsize}.map.txt",
-        gc="resources/fixed-{binsize}.gc.txt",
+        bins="resources/fixed-{binsize_refine}.bed",
+        map="resources/fixed-{binsize_refine}.map.txt",
+        gc="resources/fixed-{binsize_refine}.gc.txt",
         cytoband="/wrk/resources/genomes/hg38-iGenome-ERCC/cytoBand.txt.gz",
-        good_bins="resources/goodbins-{binsize}.bed",
+        good_bins="resources/goodbins-{binsize_refine}.bed",
         meta=out + "/{patient_id}/{patient_id}-metadata_long.tsv",
         qc_dna=out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv"
     params:
         clone_gamma=0.5
     output:
-        chr_heatmap=out+ "/{patient_id}/clones/{patient_id}-final-clones-refined-g{gamma}-{binsize}.pdf",
-        sc_heatmap=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-heatmap-g{gamma}-{binsize}.png",
-        final_clones=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-g{gamma}-{binsize}.txt",
-        final_clone_object=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-{binsize}.Rds"
+        chr_heatmap=out+ "/{patient_id}/clones/{patient_id}-final-clones-refined-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
+        sc_heatmap=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-heatmap-g{gamma}-b{binsize}-br{binsize_refine}.png",
+        final_clones=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-g{gamma}-b{binsize}-br{binsize_refine}.txt",
+        final_clone_object=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-b{binsize}-br{binsize_refine}.Rds"
     script:
         "../scripts/refine_clones_automatic.R"
 
@@ -171,13 +171,13 @@ rule haplotype_refined_clones:
     Haplotype refined clones
     '''
     input:
-       cn_obj=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-{binsize}.Rds",
+       cn_obj=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-b{binsize}-br{binsize_refine}.Rds",
        phasing=out + "/{patient_id}/{patient_id}-baf.txt.gz"
     output:
-       heatmap=out + "/{patient_id}/clones/{patient_id}-allele_specific-heatmap-g{gamma}-{binsize}.pdf",
-       cmBAF=out + "/{patient_id}/clones/{patient_id}-cmBAFs-g{gamma}-{binsize}.pdf",
-       medicc=out + "/{patient_id}/clones/{patient_id}-medicc_input-g{gamma}-{binsize}.txt",
-       cn_obj_out=out + "/{patient_id}/clones/{patient_id}-final_clone_object-haplotyped-g{gamma}-{binsize}.Rds"
+       heatmap=out + "/{patient_id}/clones/{patient_id}-allele_specific-heatmap-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
+       cmBAF=out + "/{patient_id}/clones/{patient_id}-cmBAFs-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
+       medicc=out + "/{patient_id}/clones/{patient_id}-medicc_input-g{gamma}-b{binsize}-br{binsize_refine}.txt",
+       cn_obj_out=out + "/{patient_id}/clones/{patient_id}-final_clone_object-haplotyped-g{gamma}-b{binsize}-br{binsize_refine}.Rds"
     script:
        "../scripts/haplotype_clones.R"
 
