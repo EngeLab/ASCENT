@@ -40,7 +40,7 @@ rule call_germline_hets:
     input: 
         bam=out + "/{patient_id}/{patient_id}.pseudobulk.dna.bam",
         idx=out + "/{patient_id}/{patient_id}.pseudobulk.dna.bam.bai",
-        vcf_ref="/wrk/resources/genomes/1kGP_highcoverage_hg38/1kGP_highcoverage.{chr}.snv_filtered.vcf.gz"
+        vcf_ref="/wrk/resources/genomes/1kGP_highcoverage_hg38/1kg_highcoverage.{chr}.snv_filtered.vcf.gz"
     output: 
         cellsnp_dir=temp(directory(out + "/{patient_id}/{patient_id}_{chr}")),
         vcf=temp(out + "/{patient_id}/{patient_id}.het.{chr}.vcf.gz"),
