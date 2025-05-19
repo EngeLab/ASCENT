@@ -1,2 +1,14 @@
 Files and scripts needed for paper specific analysis
 
+Bins*common.tsv are the bins used for comparison analysis between resolutions. These bins include only genomic regions that were covered at all resolution. 
+
+HCT116_CellCycleInfo.tsv gives cell sort information per HCT cell library
+
+dna_llr.smk is a snakemake rule that can be inserted into workflow/rules if downsampling is supposed to be performed before llr segmentation
+
+LLR_diff_Reference.R shows how difference between reference and llr downsampling was calculated. mpcf difference from reference was calculated the same way 
+
+so_simulations are the calculations performed to simulate standardized overlaps at different noise levels and different number of basepairs. 
+
+Bincounts file includes bincounts of HCT116 and ALL40 cells (raw data for HCT116 cells will be freely available on sra with accession number PRJNA1263634 at the time of publication).   
+
