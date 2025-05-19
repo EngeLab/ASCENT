@@ -32,7 +32,7 @@ The resources needed to run ASCENT are in one of three places: The resources fol
 These resources are reference genomes, snps, haplotype information, exclusion lists and files needed for normalisation (gc, map and normal cells). 
 
 One of the normalisations performed in ASCENT depends on having normal cells from the same sequencer, with the same read length as your experiment was performed on. This is not necessary, but if those are available it is recommended, as it decreases noise and increases both segmentation accuracy and scaling accuracy. 
-In the resources folder we include bincounts that can be used for experiments run on Nextseq 550 (2x37bp) and Novaseq 6000 (1x150bp), with resolutions 40kb-500kb. For higher resolution (as is recommended) we share the files through figshare. 
+In the resources folder we include bincounts that can be used for experiments run on Nextseq 550 (2x37bp) and Novaseq 6000 (1x150bp), with resolutions 40kb-500kb. For higher resolution 10kb and 20kb (as is recommended) the bincount files have been split in two to adhere to the file size limit of github, and need to be merged.  
 
 Reference files: 
 
