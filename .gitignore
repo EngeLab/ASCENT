@@ -1,0 +1,10 @@
+resources/*10000.tsv.gz
+resources/*20000.tsv.gz
+Figures/ALL40_10kb_reference.tsv
+results/*
+!results/ALL
+resources/seedfiles
+config/*
+!config/HCT.yaml
+debug
+results/ALL/ALL40/clones/ALL40-final_clone_object-haplotyped-g10-10000.Rds
