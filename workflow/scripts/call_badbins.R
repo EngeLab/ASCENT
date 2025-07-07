@@ -28,6 +28,8 @@ map.f <- map[good.bins]
 gc.f <- gc[good.bins]
 
 # Load countsfile with normal cells
+# 250629: Turn off normals optionally
+if(!is.null(counts.file)){
 counts <- as.matrix(data.table::fread(counts.file,data.table=F))
 counts.f <- counts[good.bins,]
 dim(counts.f)
@@ -160,6 +162,10 @@ bad.x <- bins.f %>% filter(chr=="chrX") %>% filter(bb.x$stats$twotailed25sd)
 bad.all <- bind_rows(bad.auto,bad.x) %>% distinct() %>% arrange(bin_unfilt)
 
 write_tsv(bad.all, badbins.bed)
+
+} else {
+  bad.all <- data.frame()
+}
 
 # Only filtered/good bins: 
 good.bins.final <- gc > gc_min & map > map_min & !bins$bin_unfilt %in% bad.all$bin_unfilt

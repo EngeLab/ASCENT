@@ -4,7 +4,8 @@ rule segment_joint:
         goodbins="resources/goodbins-{binsize}.bed",
         map="resources/fixed-{binsize}.map.txt",
         gc="resources/fixed-{binsize}.gc.txt",
-        normal_bincounts="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize}.tsv.gz",
+        #normal_bincounts="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize}.tsv.gz",
+        normal_bincounts="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize}.tsv.gz" if config["dna"]["normalize_to_panel"] else [],
         rna_phase=lambda wildcards: out + "/{patient_id}/{patient_id}-rna_phases.txt" if has_rna_data(wildcards.patient_id) and config["dna"]["exclude_sphase"] else [],
     output: 
         mpcf=out + "/{patient_id}/clones/{patient_id}-mpcf-g{gamma}-{binsize}.txt.gz",
@@ -145,7 +146,7 @@ rule refine_clones_automatic:
     input:
         clones=out + "/{patient_id}/clones/{patient_id}-clones-umap-g{gamma}-{binsize}.txt",
         counts=out +"/{patient_id}/{patient_id}-bincounts-{binsize_refine}.tsv.gz",
-        normal_cells="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize_refine}.tsv.gz",
+        normal_cells="resources/normals_scaling-" + str(normals_scaling_id) + "-{binsize_refine}.tsv.gz" if config["dna"]["normalize_to_panel"] else [],
         sf=out + "/{patient_id}/clones/{patient_id}-scalefactors-g{gamma}-{binsize}.txt",
         logodds=out + "/{patient_id}/clones/{patient_id}-log_odds_df-scCN-{binsize}-g{gamma}.tsv",
         bins="resources/fixed-{binsize_refine}.bed",
@@ -156,12 +157,15 @@ rule refine_clones_automatic:
         meta=out + "/{patient_id}/{patient_id}-metadata_long.tsv",
         qc_dna=out + "/{patient_id}/qc/{patient_id}-qc_dna.tsv"
     params:
-        clone_gamma=0.5
+        clone_gamma=0.5,
+        clone_min_bins=10,
+        clone_boundary_filter=30
     output:
         chr_heatmap=out+ "/{patient_id}/clones/{patient_id}-final-clones-refined-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
         sc_heatmap=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-heatmap-g{gamma}-b{binsize}-br{binsize_refine}.png",
         final_clones=out + "/{patient_id}/clones/{patient_id}-final-refined-clones-g{gamma}-b{binsize}-br{binsize_refine}.txt",
         final_clone_object=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-b{binsize}-br{binsize_refine}.Rds"
+    threads: 6
     script:
         "../scripts/refine_clones_automatic.R"
 
