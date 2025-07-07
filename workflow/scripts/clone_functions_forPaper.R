@@ -112,7 +112,15 @@ timepoint_cols <- c("diagnosis"="#fc8d59",
                     "relapse 2"="#002984",
                     "relapse 2d6"="#4f0084",
                     "relapse 2d13"="#4f0084",
-                    "relapse 2d10"="#840077")
+                    "relapse 2d10"="#840077",
+                    "0_weeks"="#840077", 
+                    "4w_non_SBRT"="#4f0084",
+                    "pre_Non_SBRT"="#d77c27",
+                    "pre_SBRT"="#d73027",
+                    "prog_trapez" ="#1a9850",
+                    "target"="black", 
+                    "non_target"="grey", 
+                    "4w_target"="pink")
 
 load_and_join <- function(annotation_files, join_by=NULL) {
   data_list <- map(annotation_files, function(x) read_tsv(x, show_col_types = FALSE))
@@ -706,7 +714,7 @@ update_clone_metrics <- function(data, norm_slot="gcmap_normal", segs_slot=NULL,
       
       idx <- which(data[["clones"]]$clone_id == clone_id)
       current_cells <- data[["clones"]]$cells[[idx]]
-      
+      #Add if zero cells move to zero?
       cat(sprintf("%d -> %d",length(current_cells), length(new_cells)),"\n")
       dropped <- setdiff(current_cells, new_cells)
       added <- setdiff(new_cells, current_cells)
@@ -725,7 +733,6 @@ update_clone_metrics <- function(data, norm_slot="gcmap_normal", segs_slot=NULL,
     }
   }
   
-  data# Second run or re-calculating cn
   if(calc_cn && all(sapply(data[["clones"]][["cn"]][run_idx], is.null))) cn_version="\nCalculating" else cn_version="\nRe-calculating"
   cat(update_msg,
       "\nSegment slot:", segs_slot,
@@ -1150,18 +1157,22 @@ split_mixed_clones <- function(data, clones=NULL, segs_slot=NULL, cells_slot="gc
     # Update clone info
     if(update_clones){
       data <- update_split_clones(data, split_results)
+      #Filtered SK 250611
       all_new_clones <- as.vector(sapply(split_results, function(x) paste0(x$parent, "_", c(1,2))))
-      data <- normalize_counts(data, methods="gcmap", subset=all_new_clones)
-      data <- update_clone_metrics(data, subset=all_new_clones, calc_cn=TRUE)
+      all_new_clones_f<-all_new_clones[all_new_clones%in%data$clones$clone_id]
+      data <- normalize_counts(data, methods="gcmap", subset=all_new_clones_f)
+      data <- update_clone_metrics(data, subset=all_new_clones_f, calc_cn=TRUE)
     }
     
     # Return split information to new subclones. Should append if multiple
     data[["clones"]][["splits"]] <- vector("list", nrow(data[["clones"]]))
+    #Adjust this somehow... 
     for (split_name in names(split_results)) {
       sr <- split_results[[split_name]]
       parent_clone <- sr$parent
       new_clone_ids <- paste0(parent_clone, c("_1", "_2"))
-      for(k in 1:2){
+      if (all(new_clone_ids %in% all_new_clones_f)) {
+        for(k in 1:2){
         subclone_idx <- which(data[["clones"]]$clone_id == new_clone_ids[k])
         subclone_split_info <- list(
           regions = sr$regions,
@@ -1173,6 +1184,7 @@ split_mixed_clones <- function(data, clones=NULL, segs_slot=NULL, cells_slot="gc
           parent = parent_clone
         )
         data[["clones"]][["splits"]][[subclone_idx]] <- subclone_split_info
+        }
       }
     }
     
@@ -1207,11 +1219,11 @@ update_split_clones <- function(data, split_results) {
     )
   })
   new_clones_tbl <- bind_rows(new_clones_list)
-  
-  # Remove parent clones and add new split clones
+  # Remove parent clones and add new split clones - fixed 250611 SK 
+  new_clones_tbl_f<-new_clones_tbl%>%filter(!clone_id %in% new_clones_tbl$parent_clone)
   data[["clones"]] <- data[["clones"]] %>%
     filter(!clone_id %in% unique(new_clones_tbl$parent_clone)) %>%
-    bind_rows(new_clones_tbl)
+    bind_rows(new_clones_tbl_f)
   
   return(data)
 }
@@ -1373,7 +1385,7 @@ fuzzy_merge_clones <- function(data, segs_slot=NULL, clone_slot=NULL, max_cn=6, 
       for (j in (i + 1):ncol(data)) {
         col1 <- data[, i]
         col2 <- data[, j]
-        
+        print(i)
         # Compare ignoring NA values
         valid_idx <- !is.na(col1) & !is.na(col2)
         differing_rows <- which(col1 != col2)
@@ -1530,7 +1542,41 @@ refine_segments_from_cn <- function(data, new_slot="refined", update_clones=TRUE
   cat("\n\n>>> Creating minimal segments from change points in current cn-integer profiles\n")
   
   # Create chromosome arm factor levels
-  chr_arm <- factor(paste(bins$chr, bins$arm, sep="_"), 
+  chr_arm <- factor(paste(bins$chr, bins$arm, sep="_"),
+                    levels=paste0("chr", rep(c(1:22, "X", "Y"), each=2), c("_p", "_q")))
+  chr_arm.l <- split(1:length(chr_arm), chr_arm)
+  
+  # Process each chromosome arm to find segments
+  refined_segs.l <- lapply(chr_arm.l, function(bin_indices) {
+    row_states <- apply(cn_bins[bin_indices,], 1, paste, collapse=",")
+    breaks <- which(row_states[-length(row_states)] != row_states[-1])
+    
+    if(length(breaks) == 0) {
+      tibble(
+        start = bin_indices[1],
+        end = bin_indices[length(bin_indices)]
+      )
+    } else {
+      tibble(
+        start = bin_indices[c(1, breaks + 1)],
+        end = bin_indices[c(breaks, length(row_states))]
+      )
+    }
+  })
+  refined_segs <- do.call(rbind, refined_segs.l)
+  
+  cat(sprintf("Found %s segments",nrow(refined_segs)),"\n")
+  print(sapply(data[["segments"]],nrow))
+  initial_segs <- names(data[["segments"]])[1]
+  prev_segs <- names(data[["segments"]])[length(names(data[["segments"]]))]
+  prev_segs_df <- data[["segments"]][[prev_segs]]
+  bins <- data[["bins"]][["good"]]
+  cn_bins <- do.call(cbind, data[["clones"]][["cn"]])
+  
+  cat("\n\n>>> Creating minimal segments from change points in current cn-integer profiles\n")
+  
+  # Create chromosome arm factor levels
+  chr_arm <- factor(paste(bins$chr, bins$arm, sep="_"),
                     levels=paste0("chr", rep(c(1:22, "X", "Y"), each=2), c("_p", "_q")))
   chr_arm.l <- split(1:length(chr_arm), chr_arm)
   
@@ -1561,9 +1607,14 @@ refine_segments_from_cn <- function(data, new_slot="refined", update_clones=TRUE
   
   # Find matching original segments
   seg_idx <- sapply(1:nrow(refined_segs), function(i) {
-    orig_match <- which(data[["segments"]][[initial_segs]]$start <= refined_segs$start[i] & 
-                          data[["segments"]][[initial_segs]]$end >= refined_segs$end[i])
-    if(length(orig_match) == 1) orig_match else NA
+    # orig_match <- which(data[["segments"]][[initial_segs]]$start <= refined_segs$start[i] &
+    #                       data[["segments"]][[initial_segs]]$end >= refined_segs$end[i])
+    # cat(i, orig_match,"\n")
+    # if(length(orig_match) == 1) orig_match else NA
+    prev_match <- which(prev_segs_df$start <= refined_segs$start[i] &
+                          prev_segs_df$end >= refined_segs$end[i])
+    # cat(i, prev_match, prev_segs_df$seg_idx[prev_match],"\n")
+    if(length(prev_match) == 1) prev_segs_df$seg_idx[prev_match] else NA
   })
   
   # Create final segments data frame using bins information
@@ -1586,6 +1637,7 @@ refine_segments_from_cn <- function(data, new_slot="refined", update_clones=TRUE
   
   return(data)
 }
+
 
 recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slot=NULL, plot=TRUE, update_clones=TRUE, ...){
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])]
@@ -1689,6 +1741,8 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
   cell_clones_idx.good <- which(!is.na(cell_clones) & ! cell_clones %in% "0")
   recall_cutoff <- median(l.recall_dist_min[cell_clones_idx.good]) + (mad(l.recall_dist_min[cell_clones_idx.good]) * mad_cutoff)
   
+  #Here add that it needs to have the same scalefactor?? Cause like.. yeah 
+  
   recall_df <- tibble(
     cell=rownames(recall_cor),
     clone_original=cell_clones,
@@ -1702,9 +1756,11 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
       # clone_original_annot == clone_recall & !clone_original_annot %in% c("unassigned", "replicating") ~ "grey",
       clone_original_annot == clone_recall ~ "grey",
       TRUE ~ clone_original_annot
-    )
+    ), 
+    scalefactor=data$cells$correct_scalefactor
   )
-  
+
+   
   recall_df_stats <- recall_df %>% 
     group_by(clone_original_annot) %>% 
     summarize(n=n(), pass=sum(pass_cutoff), fail=sum(!pass_cutoff))
@@ -1779,16 +1835,36 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
   
   data$cells$recall_dist[match_idx] <- l.recall_dist
   data$cells$recall_prob[match_idx] <- l.recall_prob
-  recall_df.f <- recall_df %>% 
-    mutate(clone_recall=case_when(
-      pass_cutoff & clone_original %in% from ~ clone_recall,
+ 
+  #Addition 250603
+  mean_scalefactors <- recall_df %>%
+    filter(!is.na(clone_original), pass_cutoff) %>%
+    group_by(clone_original) %>%
+    summarise(mean_scale_recall = mean(scalefactor, na.rm = TRUE), .groups = "drop") 
+  
+  colnames(mean_scalefactors)<-c("clone_recall", "mean_scale_recall")
+  # Step 2: Join the mean scalefactor (from clone_recall clones) to recall_df
+  recall_df <- recall_df %>%
+    left_join(mean_scalefactors, by = "clone_recall")
+  
+  # Step 3: Apply the updated clone_recall logic
+  recall_df.f <- recall_df %>%
+    mutate(clone_recall = case_when(
+      pass_cutoff &
+        clone_original %in% from &
+        abs(scalefactor - mean_scale_recall) <= 0.3 ~ clone_recall,
       TRUE ~ clone_original
     ))
+  
+  # recall_df.f <- recall_df %>% 
+  #   mutate(clone_recall=case_when(
+  #     pass_cutoff & clone_original %in% from ~ clone_recall,
+  #     TRUE ~ clone_original
+  #   ))
   data$cells$clone_recall[match_idx] <- recall_df.f$clone_recall
   
   cat("Final recall:\n")
   print(table("original"=data$cells[[clone_slot]], "recall"=data$cells$clone_recall,useNA="always"))
-  
   if(update_clones) data <- update_clone_metrics(data, clone_slot=clone_slot, calc_cn=TRUE, ...)
   
   return(data)
@@ -2197,7 +2273,7 @@ plot_cell_heatmap <- function(data, filtered=TRUE, clone_slot=NULL, segs_slot=NU
     df = annot_data,
     col = annot_colors,
     recall = recall_data,
-    reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
+    #reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
     show_legend=T,
     annotation_name_gp = gpar(fontsize=8),
     na_col = "white"
@@ -2325,7 +2401,7 @@ get_segment_highlights <- function(segments, end_cum) {
 }
 
 plot_clone_detail <- function(data, show_raw=TRUE, show_norm=TRUE, show_segs=TRUE,
-                              cn.trunc=4, labels=NULL, region=NULL, clone_ids=NULL,
+                              cn.trunc=6, labels=NULL, region=NULL, clone_ids=NULL,
                               segs_slot=NULL, order=TRUE) {
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])] 
   if(!segs_slot %in% names(data[["segments"]])) stop("Specified segment slot not found")
@@ -2630,9 +2706,12 @@ remove_small_clones <- function(data, clone_slot=NULL,  min_size_clone=min_size_
   print(clone_to_zero)
   
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
-  data[["cells"]][["clone_clean2"]] <- mgsub::mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  #Needs to change so that it's clone_clean higher number 
+  new_clones.name
+  nr<-length(which(grepl("clone_clean", colnames(data[["cells"]]))))
+  data[["cells"]][[paste0("clone_clean", 1+nr)]] <- mgsub::mgsub(data[["cells"]][[clone_slot]], paste0("^", clone_to_zero, "$"), c(rep("0", length(clone_to_zero))))
   
-  #THen clone_updates to data somehow 
+  #Then clone_update 
   data[["clones"]] <- data[["clones"]] %>%
     filter(clone_id %in% new_clones.name) 
   return(data)
