@@ -117,12 +117,13 @@ plot_clone_heatmap(d, show_chr = T)
 #It is good to look at individual chromosomes to understand if the gamma needs to be increased or decreased 
 plot_clone_detail(d, region="chr1", norm=norm)
 d <- split_mixed_clones(d, residual_threshold = 0.3, improvement_threshold = 0.8, update_clones = T, verbose=F, plot=T)
-plot_clone_heatmap(d, show_chr = T)
+#Visualize clones after splitting 
+plot_clone_heatmap(d, show_chr = T) 
+
+d <- mask_high_residuals(d, max_residual = 0.3, clone_filter_fraction=0.3, update_clones=T)
 d <- remove_bad_clones(d)
-d <- refine_segments_from_cn(d) 
-plot_clone_heatmap(d, show_chr = T)
-d <- mask_high_residuals(d, max_residual = 0.3, clone_filter_fraction=0.3, update_clones=T) #Mask high residuals again? 
-plot_clone_heatmap(d, show_chr = T)
+d <- refine_segments_from_cn(d)
+d <- merge_duplicate_clones(d)
 
 #Sometimes it is desired to ignore specific segments (for example TCR regions on chr14 and chr7 sometimes also show up in diploid immune cells, and often we would like to mask those regions so they don't affect clones)
 #Look for segments on chr that are problematic like this: 
