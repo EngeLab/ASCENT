@@ -10,7 +10,7 @@ ASCENT is implemented within Snakemake and runs within conda environments to ens
 To run ASCENT create a dntr conda environment 
 
 ```bash
-conda env create -f workflow/envs/dntr.yaml
+conda env create -f workflow/envs/ASCENT.yaml
 ```
 
 Then edit a config file to set parameters for each run, and run with:
