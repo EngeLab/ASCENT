@@ -94,7 +94,8 @@ d <- mask_high_residuals(d, max_residual = 0.3, clone_filter_fraction=0.3, updat
 d <- remove_bad_clones(d)
 d <- refine_segments_from_cn(d)
 d <- merge_duplicate_clones(d)
-d <- remove_small_clones(d, min_size_clone = 5)
+d <- remove_small_clones(d, min_size_clone = 2)
+d<-fuzzy_merge_clones(d)
 plot_clone_heatmap(d)
 ### Re-calculate single cell copy numbers based on the refined segments 
 d <- calc_cell_cn(d)

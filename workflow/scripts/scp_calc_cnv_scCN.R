@@ -45,7 +45,6 @@ mtx.e <- matrix(
 mtx_s<-mtx[segments$start,]
 mtx_s[segments$size < snakemake@params[["min_binsize"]], ] <- NA
 mtx_s[1:5,1:5]
-# split(clones$dna_library_id, clones$clone_final)
 
 # Calculate median cn per segment per clone
 
@@ -61,10 +60,7 @@ frag_files.o <- frag_files[colnames(mtx.e)]
 single_cell_SCP <- function(cn=NULL, frag_file=NULL, iter=20, frac=0.005, bins=bins.bed) {
   cn_states <- table(cn)
   cat("^^^Running cell: ", names(frag_file), "\n")
-  # gr <- granges(import(frag_file)) # granges call is to remove metadata
   gr <- import(frag_file) # granges call is to remove metadata
-  #resize(ga_b, width=width(ga_b) - 10, fix="center")    
-  # ga_bf <- ga_b[width(ga_b) > 50] #Maybe change this as well... 
   q <- quantile(width(gr), c(0.05, 0.95))
   gr.f <- gr[width(gr) >=  q[1] & width(gr) <= q[2]]
   gr.r <- resize(gr.f, width=width(gr.f) - 10, fix="center")
@@ -76,7 +72,6 @@ single_cell_SCP <- function(cn=NULL, frag_file=NULL, iter=20, frac=0.005, bins=b
   
   res <- lapply(as.numeric(names(cn_states.f)), function(state) {
     print(paste(names(frag_file), "cn state:", state))
-    #bins.pl <- bins[!is.na(cn) & cn == state & !bins@seqnames %in% c("chrX","chrY")]
     bins.pl <- bins[!is.na(cn) & cn == state & !bins@seqnames %in% c("chrY")]
     gr.pl <- subsetByOverlaps(gr.r, bins.pl, type='within') # Get subset in pl bins
     totBinSize <- sum(width(bins.pl))
@@ -102,10 +97,8 @@ single_cell_SCP <- function(cn=NULL, frag_file=NULL, iter=20, frac=0.005, bins=b
       if(length(formn) > 0) {
         mns <- mean(formn, na.rm=T)
       }        
-      #        setNames(sapply(1:4, function(k){ sum(sum(cov==k))/totBinSize }), nm=1:4)
       setNames(c(sapply(1:4, function(k){ sum(sum(cov==k))/totBinSize }), lns, mns), nm=c(1:4, 'numOverlaps', 'meanOverlapSize'))
     })
-    # gr.pl.cov
     setNames(c(rowMeans(gr.pl.cov, na.rm=T), meanFragsize, numReads, f), nm=c(rownames(gr.pl.cov), "meanFragSize", "numReads", "sampleSize")) # Keep only mean
   })
   names(res) <- names(cn_states.f)
