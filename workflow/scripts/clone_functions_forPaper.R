@@ -680,7 +680,7 @@ update_clone_metrics <- function(data, norm_slot=NULL, segs_slot=NULL, clone_slo
   if(is.null(norm_slot)) norm_slot <- get_norm_slot(data, "gcmap")
   # Default to latest added segments
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])]
-
+  
   stopifnot("Not recognized normalization" = norm_slot %in% names(data[["clones"]]),
             "Normalization data slot empty"= !all(sapply(data[["clones"]][[norm_slot]], is.null)),
             "No segments to process" = !is.null(data[["segments"]]), 
@@ -1170,29 +1170,33 @@ split_mixed_clones <- function(data, clones=NULL, segs_slot=NULL, cells_slot=NUL
     # Update clone info
     if(update_clones){
       data <- update_split_clones(data, split_results)
+      #Filtered SK 250611
       all_new_clones <- as.vector(sapply(split_results, function(x) paste0(x$parent, "_", c(1,2))))
-      data <- normalize_counts(data, methods="gcmap", subset=all_new_clones)
-      data <- update_clone_metrics(data, subset=all_new_clones, calc_cn=TRUE)
-    }
+      all_new_clones_f<-all_new_clones[all_new_clones%in%data$clones$clone_id]
+      data <- normalize_counts(data, methods="gcmap", subset=all_new_clones_f)
+      data <- update_clone_metrics(data, subset=all_new_clones_f, calc_cn=TRUE)
+    }  
     
-    # Return split information to new subclones. Should append if multiple
     data[["clones"]][["splits"]] <- vector("list", nrow(data[["clones"]]))
+    #Adjust this somehow... 
     for (split_name in names(split_results)) {
       sr <- split_results[[split_name]]
       parent_clone <- sr$parent
       new_clone_ids <- paste0(parent_clone, c("_1", "_2"))
-      for(k in 1:2){
-        subclone_idx <- which(data[["clones"]]$clone_id == new_clone_ids[k])
-        subclone_split_info <- list(
-          regions = sr$regions,
-          region_ssrs = sr$region_ssrs,
-          total_ssrs = sr$total_ssrs,
-          region_improvement = sr$region_improvement,
-          total_improvement = sr$total_improvement,
-          subclone_profiles = sr$subclone_profiles[[k]],
-          parent = parent_clone
-        )
-        data[["clones"]][["splits"]][[subclone_idx]] <- subclone_split_info
+      if (all(new_clone_ids %in% all_new_clones_f)) {
+        for(k in 1:2){
+          subclone_idx <- which(data[["clones"]]$clone_id == new_clone_ids[k])
+          subclone_split_info <- list(
+            regions = sr$regions,
+            region_ssrs = sr$region_ssrs,
+            total_ssrs = sr$total_ssrs,
+            region_improvement = sr$region_improvement,
+            total_improvement = sr$total_improvement,
+            subclone_profiles = sr$subclone_profiles[[k]],
+            parent = parent_clone
+          )
+          data[["clones"]][["splits"]][[subclone_idx]] <- subclone_split_info
+        }
       }
     }
     
@@ -1208,16 +1212,13 @@ update_split_clones <- function(data, split_results) {
   new_clones_list <- lapply(names(split_results), function(split_name) {
     split <- split_results[[split_name]]
     parent_id <- split$parent
-    
     # Get cells for each subclone from cluster assignments
     cells_1 <- names(split$cluster_assignments[split$cluster_assignments == 1])
     cells_2 <- names(split$cluster_assignments[split$cluster_assignments == 2])
     new_clone_names <- paste(parent_id, c(1,2), sep="_") # Because k always k=2 in this setup
-    
     # Get raw counts for new clones from parent clone
     counts_1 <- data[["cells"]][["raw_counts"]][match(cells_1, data[["cells"]][["dna_library_id"]])]
     counts_2 <- data[["cells"]][["raw_counts"]][match(cells_2, data[["cells"]][["dna_library_id"]])]
-    
     # Create tibble with two rows (one for each split)
     tibble(
       clone_id = new_clone_names,
@@ -1227,14 +1228,13 @@ update_split_clones <- function(data, split_results) {
     )
   })
   new_clones_tbl <- bind_rows(new_clones_list)
-  
-  # Remove parent clones and add new split clones
+  # Remove parent clones and add new split clones - fixed 250611 SK 
+  new_clones_tbl_f<-new_clones_tbl%>%filter(!clone_id %in% new_clones_tbl$parent_clone)
   data[["clones"]] <- data[["clones"]] %>%
     filter(!clone_id %in% unique(new_clones_tbl$parent_clone)) %>%
-    bind_rows(new_clones_tbl)
-  
+    bind_rows(new_clones_tbl_f)
   return(data)
-}
+} 
 
 sort_from_diploid_root <- function(x, tree_method="fastme.ols", na.rm=TRUE) {
   if(na.rm) {
@@ -1393,7 +1393,7 @@ fuzzy_merge_clones <- function(data, segs_slot=NULL, clone_slot=NULL, max_cn=6, 
       for (j in (i + 1):ncol(data)) {
         col1 <- data[, i]
         col2 <- data[, j]
-        
+        print(i)
         # Compare ignoring NA values
         valid_idx <- !is.na(col1) & !is.na(col2)
         differing_rows <- which(col1 != col2)
@@ -1510,6 +1510,7 @@ fuzzy_merge_clones <- function(data, segs_slot=NULL, clone_slot=NULL, max_cn=6, 
   }
 }
 
+
 remove_bad_clones <- function(data, clone_slot=NULL, frequency=0.1, ...){
   if(is.null(clone_slot)) clone_slot <- names(data[["cells"]])[max(grep("clone_", names(data[["cells"]])))]
   if(!is.null(data[["segments"]]$masked)){
@@ -1535,7 +1536,12 @@ remove_bad_clones <- function(data, clone_slot=NULL, frequency=0.1, ...){
   print(clone_to_zero)
   
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
-  data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  #data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  data[["cells"]][["clone_clean"]] <- ifelse(
+    data[["cells"]][[clone_slot]] %in% clone_to_zero,
+    "0",
+    data[["cells"]][[clone_slot]]
+  )
   
   #THen clone_updates to data somehow 
   data[["clones"]] <- data[["clones"]] %>%
@@ -1828,7 +1834,7 @@ calc_cell_cn <- function(data, cell_idx=NULL, filter_segs=FALSE, cells_slot=NULL
   if(is.null(cells_slot)) cells_slot <- get_norm_slot(data, "gcmap")
   try(RhpcBLASctl::blas_set_num_threads(1))
   try(RhpcBLASctl::omp_set_num_threads(1))
-
+  
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])]
   if(is.null(clone_slot)) clone_slot <- names(data[["cells"]])[max(grep("clone_", names(data[["cells"]])))]
   stopifnot("cells_slot should be gcmap or gcmap_normal"=
@@ -2219,7 +2225,7 @@ plot_cell_heatmap <- function(data, filtered=TRUE, clone_slot=NULL, segs_slot=NU
     df = annot_data,
     col = annot_colors,
     recall = recall_data,
-    reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
+    reads=anno_barplot(log10(meta$bam_unpaired), bar_width=1, border=F, baseline = "min"),
     show_legend=T,
     annotation_name_gp = gpar(fontsize=8),
     na_col = "white"
@@ -2347,8 +2353,8 @@ get_segment_highlights <- function(segments, end_cum) {
 }
 
 plot_clone_detail <- function(data, show_raw=TRUE, show_norm=TRUE, show_segs=TRUE,
-                              cn.trunc=4, labels=NULL, region=NULL, clone_ids=NULL,
-                              segs_slot=NULL, order=TRUE) {
+                              cn.trunc=6, labels=NULL, region=NULL, clone_ids=NULL,
+                              segs_slot=NULL, order=TRUE, norm=NULL) {
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])] 
   if(!segs_slot %in% names(data[["segments"]])) stop("Specified segment slot not found")
   
@@ -2359,36 +2365,69 @@ plot_clone_detail <- function(data, show_raw=TRUE, show_norm=TRUE, show_segs=TRU
   } else {
     clone_idx <- seq_len(nrow(data$clones))
   }
+  if(norm%in%"gcmap"){
+    df.list <- lapply(clone_idx, function(i) {
+      clone <- data$clones$clone_id[i]
+      
+      tibble(
+        bin = seq_len(nrow(data$bins$all)),
+        bp = data$bins$all$end_cum,
+        chr = data$bins$all$chr,
+        arm = data$bins$all$arm,
+        bp_chr_start = data$bins$all$start,
+        bp_chr_end = data$bins$all$end,
+        raw = expand_gaps_vec(data$clones$raw_counts[[i]], 
+                              length.out=nrow(data$bins$all), 
+                              idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        gc = expand_gaps_vec(data$clones$gcmap[[i]], 
+                             length.out=nrow(data$bins$all), 
+                             idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        seg = expand_gaps_vec(data$clones$segment_bins[[i]], 
+                              length.out=nrow(data$bins$all), 
+                              idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        cn = expand_gaps_vec(data$clones$cn[[i]], 
+                             length.out=nrow(data$bins$all), 
+                             idx=data$bins$good$id),
+        n_cells = length(data$clones$cells[[i]])
+      )
+    })
+  }
+  if(norm%in%"gcmap_norm"){
+    df.list <- lapply(clone_idx, function(i) {
+      clone <- data$clones$clone_id[i]
+      
+      tibble(
+        bin = seq_len(nrow(data$bins$all)),
+        bp = data$bins$all$end_cum,
+        chr = data$bins$all$chr,
+        arm = data$bins$all$arm,
+        bp_chr_start = data$bins$all$start,
+        bp_chr_end = data$bins$all$end,
+        raw = expand_gaps_vec(data$clones$raw_counts[[i]], 
+                              length.out=nrow(data$bins$all), 
+                              idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        gc = expand_gaps_vec(data$clones$gcmap_normal[[i]], 
+                             length.out=nrow(data$bins$all), 
+                             idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        seg = expand_gaps_vec(data$clones$segment_bins[[i]], 
+                              length.out=nrow(data$bins$all), 
+                              idx=data$bins$good$id) * 
+          data$clones$scale_factor[[i]],
+        cn = expand_gaps_vec(data$clones$cn[[i]], 
+                             length.out=nrow(data$bins$all), 
+                             idx=data$bins$good$id),
+        n_cells = length(data$clones$cells[[i]])
+      )
+    })
+  }
   
   # Create the full plotting dataframe first
-  df.list <- lapply(clone_idx, function(i) {
-    clone <- data$clones$clone_id[i]
-    
-    tibble(
-      bin = seq_len(nrow(data$bins$all)),
-      bp = data$bins$all$end_cum,
-      chr = data$bins$all$chr,
-      arm = data$bins$all$arm,
-      bp_chr_start = data$bins$all$start,
-      bp_chr_end = data$bins$all$end,
-      raw = expand_gaps_vec(data$clones$raw_counts[[i]], 
-                            length.out=nrow(data$bins$all), 
-                            idx=data$bins$good$id) * 
-        data$clones$scale_factor[[i]],
-      gc = expand_gaps_vec(data$clones$gcmap_normal[[i]], 
-                           length.out=nrow(data$bins$all), 
-                           idx=data$bins$good$id) * 
-        data$clones$scale_factor[[i]],
-      seg = expand_gaps_vec(data$clones$segment_bins[[i]], 
-                            length.out=nrow(data$bins$all), 
-                            idx=data$bins$good$id) * 
-        data$clones$scale_factor[[i]],
-      cn = expand_gaps_vec(data$clones$cn[[i]], 
-                           length.out=nrow(data$bins$all), 
-                           idx=data$bins$good$id),
-      n_cells = length(data$clones$cells[[i]])
-    )
-  })
+  
   
   names(df.list) <- data$clones$clone_id[clone_idx]
   
@@ -2631,9 +2670,12 @@ remove_bad_cells <- function(data, max_diff_bins=NULL, min_seg_size=500, clone_s
         .data[[clone_slot]]  # Otherwise, retain the value in clone_slot
       )
     )
+  # data$cells$clone_final
   print(table("old"=data$cells[[clone_slot]], "new"=data$cells$clone_final))
+  data[["clones"]] <- data[["clones"]] %>%
+    filter(clone_id %in% names(table(data$cells$clone_final))) 
+  
   data <- update_clone_metrics(data, clone_slot=clone_slot, calc_cn=TRUE, ...)
-
   return(data)
 }
 
@@ -2652,13 +2694,17 @@ remove_small_clones <- function(data, clone_slot=NULL,  min_size_clone=min_size_
   print(clone_to_zero)
   
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
-  data[["cells"]][["clone_clean2"]] <- mgsub::mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  #Needs to change so that it's clone_clean higher number 
+  new_clones.name
+  nr<-length(which(grepl("clone_clean", colnames(data[["cells"]]))))
+  data[["cells"]][[paste0("clone_clean", 1+nr)]] <- mgsub::mgsub(data[["cells"]][[clone_slot]], paste0("^", clone_to_zero, "$"), c(rep("0", length(clone_to_zero))))
   
-  #THen clone_updates to data somehow 
+  #Then clone_update 
   data[["clones"]] <- data[["clones"]] %>%
     filter(clone_id %in% new_clones.name) 
   return(data)
 }
+
 
 load_parameters <- function(patient_id, yaml_file, defaults = default_params) {
   params <- defaults

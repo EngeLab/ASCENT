@@ -176,8 +176,10 @@ rule haplotype_refined_clones:
     '''
     input:
        cn_obj=out + "/{patient_id}/clones/{patient_id}-final_clone_object-g{gamma}-b{binsize}-br{binsize_refine}.Rds",
-       phasing=out + "/{patient_id}/{patient_id}-baf.txt.gz"
+       phasing=out + "/{patient_id}/{patient_id}-baf.txt.gz",
+       LOH=out + "/{patient_id}/{patient_id}.unfiltered.vcf.gz"
     output:
+       loh_region=out + "/{patient_id}/clones/{patient_id}-LOH-regions-g{gamma}-b{binsize}-br{binsize_refine}.png",
        heatmap=out + "/{patient_id}/clones/{patient_id}-allele_specific-heatmap-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
        cmBAF=out + "/{patient_id}/clones/{patient_id}-cmBAFs-g{gamma}-b{binsize}-br{binsize_refine}.pdf",
        medicc=out + "/{patient_id}/clones/{patient_id}-medicc_input-g{gamma}-b{binsize}-br{binsize_refine}.txt",

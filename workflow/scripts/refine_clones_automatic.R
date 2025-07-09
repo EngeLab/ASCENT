@@ -1,5 +1,5 @@
 #Script for automatic clone refinement 
-
+setwd("/wrk/resources/ASCENT/")
 library(tidyverse)
 library(GenomicRanges)
 library(copynumber)
@@ -60,11 +60,16 @@ cell_data <- meta_seed %>%
   filter(!is.na(dna_library_id)) # Added 250128: Hit-picking in some plates will mean different number of RNA vs DNA libraries in a plate 
 
 # Normal panel scaling
+norm<-"gcmap_norm"
+
 use_normal_scaling <- !is.null(normal_counts_file) && file.exists(normal_counts_file)
 if (!use_normal_scaling) {
   cat("Normal cell panel not provided or not found. Running without normal scaling.\n")
   normal_counts_file <- NULL
+  norm<-"gcmap"
 }
+
+
 
 # Load cnv data
 d <- create_pseudobulk_analysis(counts_matrix = counts, 
@@ -76,13 +81,14 @@ d <- create_pseudobulk_analysis(counts_matrix = counts,
 # Processing
 d <- normalize_counts(d, methods=c("ft_lowess", "gcmap"))
 if(is.null(normal_counts_file)){
-  d <- call_segments(d, gamma=0.5, norm_segments = "ft_lowess", norm_ratio="gcmap", verbose=T)
+  d <- call_segments(d, gamma=2.5, norm_segments = "ft_lowess", norm_ratio="gcmap", verbose=T)
 } else {
   d <- call_segments(d, gamma=0.5, norm_segments = "ft_lowess_normal", norm_ratio="gcmap_normal", verbose=T)
 }
 d <- merge_small_segments(d, current="initial", revision="merged", min_bins_filter=10, boundary_filter=40, update_clones=T)
 d <- calc_cn_integers(d) 
 plot_clone_heatmap(d)
+plot_clone_detail(d, region="chr1", norm=norm)
 d <- split_mixed_clones(d, residual_threshold = 0.3, improvement_threshold = 0.8, update_clones = T, verbose=F, plot=T)
 d <- mask_high_residuals(d, max_residual = 0.3, clone_filter_fraction=0.3, update_clones=T)
 d <- remove_bad_clones(d)
@@ -96,8 +102,6 @@ d <- calc_cell_cn(d)
 #Remove cells that don't fit well 
 d <- remove_bad_cells(d, max_diff_bins = 1000, update_clones=T)
 
-plot_clone_detail(d, region="chr12")
-
 #Single cell copynumber heatmap
 png(file=snakemake@output[["sc_heatmap"]], width=2400,height=1400,units="px",res=150)
 plot_cell_heatmap(d, filtered=TRUE, smooth_bins = 10)
@@ -108,7 +112,7 @@ dev.off()
 pdf(file=snakemake@output[["chr_heatmap"]], width=12, height=max(8, nrow(d$clones)*1.3))
 plot_clone_heatmap(d, show_chr=T, clone_types=T, only_divergent = F)
 for(chr in levels(d$bins$all$chr)){
-  plot_clone_detail(d, region = chr)
+  plot_clone_detail(d, region = chr, norm=norm)
 }
 dev.off()
 
