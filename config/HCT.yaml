@@ -30,7 +30,7 @@ ref:
   # gaps: 
   gene_info: /wrk/resources/genomes/grch38-gdc/star_index/geneInfo.tab
   mt_genes: /wrk/resources/genomes/grch38-gdc/gencode.v36.mt_genes.txt
-  cytobands: /wrk/resources/genomes/hg38-iGenome-ERCC/cytoBand.txt.gz
+  cytobands: resources/cytoBand.txt.gz
   starfusion_ref: /wrk/resources/genomes/GRCh38_gencode_v44_CTAT_STARFusion/ctat_genome_lib_build_dir
 
 dna:
