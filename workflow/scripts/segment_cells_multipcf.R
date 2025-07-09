@@ -169,7 +169,7 @@ input.split <- Map(function(bins_df) {
   mpcf.input.norm[which(bins$chr %in% bins_df$chr & bins$start %in% bins_df$start), , drop = FALSE]
 }, bins.split)
 
-cat(paste0("Running joint segmentation in ",pid," at gamma=",gamma," with fast=",mpcf_fast," (n=",sum(good.cells2)," filtered cells)...\n"))
+cat(paste0("Running joint segmentation in ",pid," at gamma=",gamma," with fast=",mpcf_fast," (n=",sum(good.cells2)," filtered cells and ",nrow(bins)," bins)...\n"))
 res.split <- safe_future_map2(input.split, bins.split, function(d, b)
   copynumber::multipcf(as.data.frame(d), pos.unit="bp", arms=b$arm, gamma=gamma, normalize=F, fast=mpcf_fast, verbose=F, return.est=F)
 )
@@ -178,7 +178,7 @@ res.split <- safe_future_map2(input.split, bins.split, function(d, b)
 res <- do.call(rbind, res.split)
 
 # Add back dropped bins (if any)
-if (length(bins_dropped) > 0) {
+if (length(unlist(bins_dropped)) > 0) {
   dropped_all <- do.call(rbind, bins_dropped)
   input_dropped <- mpcf.input.norm[with(dropped_all, which(bins$chr %in% chr & bins$start %in% start)), , drop = FALSE]
   

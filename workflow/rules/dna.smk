@@ -230,13 +230,13 @@ rule collect_bincounts_normals_scaling:
 
 rule get_goodbins:
     input:
-        counts="resources/normals_bins-" + normals_bins_id + "-{binsize}.tsv.gz",
+        counts="resources/normals_bins-" + normals_bins_id + "-{binsize}.tsv.gz" if config["dna"]["normalize_to_panel"] else [],
         map="resources/fixed-{binsize}.map.txt",
         gc="resources/fixed-{binsize}.gc.txt",
         bins="resources/fixed-{binsize}.bed"
     output:
-        pdf="resources/badbins-{binsize}.pdf",
-        badbins="resources/badbins-{binsize}.bed",
+        #pdf="resources/badbins-{binsize}.pdf",
+        #badbins="resources/badbins-{binsize}.bed",
         goodbins="resources/goodbins-{binsize}.bed"
     params:
         gc_min=config["dna"]["bin_min_gc"],

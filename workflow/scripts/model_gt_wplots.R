@@ -254,7 +254,4 @@ for (i in 1:length(copy_numbers)) {
 }
 
 
-# Arrange dynamic error plots
-pdf("/wrk/data/solrun/AnalysisPipelinePaper/ALL40/Figure4/Supplementary.pdf", width=15, height=12)
-grid.arrange(grobs = dynamic_plots_list, ncol = 2, nrow = 2)
-dev.off()
+

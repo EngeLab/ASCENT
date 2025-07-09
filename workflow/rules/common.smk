@@ -231,23 +231,29 @@ sample_data = load_sample_data()
 cells_dna = sample_data["dna"]
 cells_rna = sample_data["rna"]
 
-# Get normal cell panels
-cells_normals = load_normal_data()
-# 1. For outlier bins 
-if is_dna_analysis() and os.path.exists(config["dna"]["normals_bins"]):
-    normals_bins = pd.read_table(config["dna"]["normals_bins"], header=0)
-    normals_bins_id = os.path.splitext(os.path.basename(config["dna"]["normals_bins"]))[0]
-else:
-    normals_bins = pd.DataFrame()
-    normals_bins_id = None
+# Get normal cell panels #250629
+cells_normals = None
+normals_bins = pd.DataFrame()
+normals_bins_id = None
+normals_scaling = pd.DataFrame()
+normals_scaling_id = None
+if is_dna_analysis() and config["dna"]["normalize_to_panel"]:
+    cells_normals = load_normal_data()
+    # 1. For outlier bins 
+    if os.path.exists(config["dna"]["normals_bins"]):
+        normals_bins = pd.read_table(config["dna"]["normals_bins"], header=0)
+        normals_bins_id = os.path.splitext(os.path.basename(config["dna"]["normals_bins"]))[0]
+    #else:
+    #    normals_bins = pd.DataFrame()
+    #    normals_bins_id = None
 
-# 2. For normal cell scaling
-if is_dna_analysis() and os.path.exists(config["dna"]["normals_scaling"]):
-    normals_scaling = pd.read_table(config["dna"]["normals_scaling"], header=0)
-    normals_scaling_id = os.path.splitext(os.path.basename(config["dna"]["normals_scaling"]))[0]
-else:
-    normals_scaling = pd.DataFrame()
-    normals_scaling_id = None
+    # 2. For normal cell scaling
+    if os.path.exists(config["dna"]["normals_scaling"]):
+        normals_scaling = pd.read_table(config["dna"]["normals_scaling"], header=0)
+        normals_scaling_id = os.path.splitext(os.path.basename(config["dna"]["normals_scaling"]))[0]
+    #else:
+    #    normals_scaling = pd.DataFrame()
+    #    normals_scaling_id = None
 
 # Load patient-specific parameters
 patient_params_file = config["dna"]["patient_params"] if "patient_params" in config["dna"] else None
@@ -255,11 +261,6 @@ patient_params = {}
 if os.path.exists(patient_params_file):
     with open(patient_params_file) as f:
         patient_params = yaml.safe_load(f)
-
-# def get_patient_param(patient_id, param_name):
-#     if patient_id in patient_params and param_name in patient_params[patient_id]:
-#         return patient_params[patient_id][param_name]
-#     return config["dna"][param_name]
 
 def get_patient_param(patient_id, param_name):
     """Get parameter value for patient, falling back to config default if not specified."""

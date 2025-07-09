@@ -8,3 +8,5 @@ config/*
 !config/HCT.yaml
 debug
 results/ALL/ALL40/clones/ALL40-final_clone_object-haplotyped-g10-10000.Rds
+.debug/
+.Rproj.user
