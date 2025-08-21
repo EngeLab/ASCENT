@@ -5,20 +5,20 @@ library(caTools)
 library(patchwork)
 options(scipen=999)
 segs_slot <- "refined"
-source("/wrk/resources/dntr2_extrascp/workflow/scripts/clone_functions_forPaper.R")
+source("workflow/scripts/clone_functions_forPaper.R")
 
-patient_id <- "ALL40"
-run <- "/wrk/resources/dntr2_extrascp/results/DNA_37_SK_250405"
+patient_id <- "ALL3"
+run <- "results/DNA_37_SK/"
 
-cn_obj<-"final_clone_object.Rds"
-d <- read_rds(cn_obj)
+#cn_obj<-"final_clone_object.Rds"
+d <- read_rds("results/DNA_37_SK/ALL3/clones/ALL3-final_clone_object_manual.Rds")
 
 clones <- d$cells %>% 
   filter(!is.na(clone_final)) %>% 
   select(cell=dna_library_id, clone=clone_final)
 
 
-snps.all <- read_tsv(paste0(run, "/phasing/", patient_id, "-baf.txt.gz"), col_names=c("chr","pos","cell","hapA_count","hapB_count")) %>% 
+snps.all <- read_tsv(paste0(run, patient_id, "/", patient_id, "-baf.txt.gz"), col_names=c("chr","pos","cell","hapA_count","hapB_count")) %>% 
   left_join(clones, by="cell") %>% 
   mutate(chr=factor(chr, levels=paste0("chr",1:22)))
 

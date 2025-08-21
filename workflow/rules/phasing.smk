@@ -31,48 +31,70 @@ rule merge_dna_bam:
         samtools index -o {output.idx} {output.bam}
         '''
 
-rule call_germline_hets: 
-    '''
-    Use 1kg callset on all cells to find likely heterozygous germline variants
-    MAF 0.01 means at least 1/100 reads
-    AD >= 2 in practice means a SNP is detected in at least 2 different cells
-    '''
-    input: 
+rule call_germline_hets:
+    """
+    Use 1kg callset on all cells to find likely heterozygous germline variants.
+    Output both filtered and unfiltered VCFs.
+    """
+    input:
         bam=out + "/{patient_id}/{patient_id}.pseudobulk.dna.bam",
         idx=out + "/{patient_id}/{patient_id}.pseudobulk.dna.bam.bai",
-        vcf_ref="/wrk/resources/genomes/1kGP_highcoverage_hg38/1kg_highcoverage.{chr}.snv_filtered.vcf.gz"
-    output: 
+        vcf_ref="/wrk/resources/genomes/1kGP_highcoverage_hg38/1kGP_high_coverage_Illumina.{chr}.SNV_AF5e4.vcf.gz"
+    output:
         cellsnp_dir=temp(directory(out + "/{patient_id}/{patient_id}_{chr}")),
-        vcf=temp(out + "/{patient_id}/{patient_id}.het.{chr}.vcf.gz"),
-        tbi=temp(out + "/{patient_id}/{patient_id}.het.{chr}.vcf.gz.tbi")
+        vcf_filtered=temp(out + "/{patient_id}/{patient_id}.het.filtered.{chr}.vcf.gz"),
+        tbi_filtered=temp(out + "/{patient_id}/{patient_id}.het.filtered.{chr}.vcf.gz.tbi"),
+        vcf_unfiltered=temp(out + "/{patient_id}/{patient_id}.unfiltered.{chr}.vcf.gz"),
+        tbi_unfiltered=temp(out + "/{patient_id}/{patient_id}.unfiltered.{chr}.vcf.gz.tbi")
     params:
         fasta=config["ref"]["fasta"],
         min_AD=2
     threads: 4
     conda: "../envs/snv.yaml"
-    shell: 
+    shell:
         '''
+        # Run cellSNP-lite
         cellsnp-lite \
-        -s {input.bam} \
-        -I {wildcards.patient_id} \
-        -O {output.cellsnp_dir} \
-        --cellTAG None \
-        --genotype \
-        --gzip \
-        -p {threads} \
-        -f {params.fasta} \
-        -R {input.vcf_ref} \
-        --UMItag None \
-        --minMAF 0.01 \
-        --minCOUNT 5 \
-        --minMAPQ 20 \
-        --maxDEPTH 100 \
-        --countORPHAN \
-        --exclFLAG UNMAP,SECONDARY,QCFAIL,DUP \
-        --gzip
+            -s {input.bam} \
+            -I {wildcards.patient_id} \
+            -O {output.cellsnp_dir} \
+            --cellTAG None \
+            --genotype \
+            --gzip \
+            -p {threads} \
+            -f {params.fasta} \
+            -R {input.vcf_ref} \
+            --UMItag None \
+            --minMAF 0 \
+            --minCOUNT 5 \
+            --minMAPQ 20 \
+            --maxDEPTH 1000 \
+            --countORPHAN \
+            --exclFLAG UNMAP,SECONDARY,QCFAIL,DUP \
+            --gzip
 
-        bcftools filter -i 'GT="het" & INFO/AD[0] >= {params.min_AD}' {output.cellsnp_dir}/cellSNP.cells.vcf.gz | bgzip > {output.vcf}
-        tabix {output.vcf}
+        # Create unfiltered VCF (just bgzip + index)
+        cp {output.cellsnp_dir}/cellSNP.cells.vcf.gz {output.vcf_unfiltered}
+        tabix {output.vcf_unfiltered}
+
+        # Create filtered VCF (het + min AD)
+        bcftools filter -i 'GT="het" & INFO/AD[0] >= {params.min_AD}' {output.vcf_unfiltered} | bgzip > {output.vcf_filtered}
+        tabix {output.vcf_filtered}
+        '''
+
+rule collect_hom_vcfs:
+    input:
+        expand(out + "/{{patient_id}}/{{patient_id}}.unfiltered.{chr}.vcf.gz", chr=['chr' + str(i) for i in range(1, 23)])
+    output:
+        out + "/{patient_id}/{patient_id}.unfiltered.vcf.gz"
+    conda:
+        "../envs/snv.yaml"
+    shell:
+        '''
+        zgrep -m1 "^#CHROM" {input[0]} > {output}
+        for f in {input}; do
+            zgrep -v "^#" "$f" >> {output}
+        done
         '''
 
 rule phase_variants: 
@@ -82,8 +104,8 @@ rule phase_variants:
     NOTE! Not using chrX currently. Renamed the non-PAR chrX, available
     '''
     input: 
-        vcf=out + "/{patient_id}/{patient_id}.het.{chr}.vcf.gz",
-        idx=out + "/{patient_id}/{patient_id}.het.{chr}.vcf.gz.tbi",
+        vcf=out + "/{patient_id}/{patient_id}.het.filtered.{chr}.vcf.gz",
+        idx=out + "/{patient_id}/{patient_id}.het.filtered.{chr}.vcf.gz.tbi",
         phase_ref="/wrk/resources/genomes/hgdp_1kg/phased_haplotypes_v2/hgdp1kgp_{chr}.filtered.SNV_INDEL.phased.shapeit5.bcf",
     output: temp(out + "/{patient_id}/{patient_id}.phased.{chr}.vcf.gz")
     params: 

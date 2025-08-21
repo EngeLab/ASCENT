@@ -25,7 +25,7 @@ rule segment_joint:
 
 rule cnv_calc_scp_scCN:
     '''
-    Calculate overlap statistics based on median copynumber per clone
+    Calculate overlap statistics based on copynumber per cell
     '''
     input:
         frag_files=lambda wildcards: expand(

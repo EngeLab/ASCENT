@@ -747,8 +747,11 @@ update_clone_metrics <- function(data, norm_slot="gcmap_normal", segs_slot=NULL,
   return(data)
 }
 
-calc_cn_integers <- function(data, subset=NULL){
-  cat("\nCalculating scale factors and copy number integers\n")
+calc_cn_integers <- function(data, subset=NULL, scale_range=c(1.2, 4.5)){
+  stopifnot("Incorrect scale factor range"=!is.null(scale_range) & length(scale_range)==2)
+  s <- seq(scale_range[1], scale_range[2], length.out=100)
+  
+  cat(sprintf("\nCalculating scale factors and copy number integers (scale range %s to %s)\n", scale_range[1], scale_range[2]))
   
   run_idx = TRUE # Default run all clones
   if(!is.null(subset)) {
@@ -757,17 +760,12 @@ calc_cn_integers <- function(data, subset=NULL){
     cat("Using subset of clones:",paste(subset,collapse=", "),"\n")
   }
   
-  data[["clones"]][run_idx,] <- data[["clones"]][run_idx,] %>%
+  data[["clones"]][run_idx,] <- data[["clones"]][run_idx,] %>% 
     mutate(
-      scale_factor = map(cells, ~{
-        data$cells %>%
-          filter(dna_library_id %in% .x) %>%
-          pull(correct_scalefactor) %>%
-          na.omit() %>%
-          { if (length(.) == 0) NA_real_ else median(.) }
-      }),
-      cn = map2(segment_bins, scale_factor, ~round(.x * .y)),
-      residuals = map2(segment_means, scale_factor, ~abs(.x * .y - round(.x * .y)))
+      scale_tests = map(segment_bins, ~sapply(s, function(sf) manhattan.dist(sf, .x, na.rm = T))),
+      scale_factor = map(scale_tests, ~s[which.min(.x)]),
+      cn = map2(segment_bins, scale_factor, ~round(.x*.y)),
+      residuals = map2(segment_means, scale_factor, ~abs(.x*.y - round(.x*.y)))
     )
   return(data)
 }
@@ -1173,17 +1171,17 @@ split_mixed_clones <- function(data, clones=NULL, segs_slot=NULL, cells_slot="gc
       new_clone_ids <- paste0(parent_clone, c("_1", "_2"))
       if (all(new_clone_ids %in% all_new_clones_f)) {
         for(k in 1:2){
-        subclone_idx <- which(data[["clones"]]$clone_id == new_clone_ids[k])
-        subclone_split_info <- list(
-          regions = sr$regions,
-          region_ssrs = sr$region_ssrs,
-          total_ssrs = sr$total_ssrs,
-          region_improvement = sr$region_improvement,
-          total_improvement = sr$total_improvement,
-          subclone_profiles = sr$subclone_profiles[[k]],
-          parent = parent_clone
-        )
-        data[["clones"]][["splits"]][[subclone_idx]] <- subclone_split_info
+          subclone_idx <- which(data[["clones"]]$clone_id == new_clone_ids[k])
+          subclone_split_info <- list(
+            regions = sr$regions,
+            region_ssrs = sr$region_ssrs,
+            total_ssrs = sr$total_ssrs,
+            region_improvement = sr$region_improvement,
+            total_improvement = sr$total_improvement,
+            subclone_profiles = sr$subclone_profiles[[k]],
+            parent = parent_clone
+          )
+          data[["clones"]][["splits"]][[subclone_idx]] <- subclone_split_info
         }
       }
     }
@@ -1527,12 +1525,7 @@ remove_bad_clones <- function(data, clone_slot=NULL, frequency=0.1, ...){
   print(clone_to_zero)
   
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
-  #data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
-  data[["cells"]][["clone_clean"]] <- ifelse(
-    data[["cells"]][[clone_slot]] %in% clone_to_zero,
-    "0",
-    data[["cells"]][[clone_slot]]
-  )
+  data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
   
   #THen clone_updates to data somehow 
   data[["clones"]] <- data[["clones"]] %>%
@@ -1746,8 +1739,6 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
   cell_clones_idx.good <- which(!is.na(cell_clones) & ! cell_clones %in% "0")
   recall_cutoff <- median(l.recall_dist_min[cell_clones_idx.good]) + (mad(l.recall_dist_min[cell_clones_idx.good]) * mad_cutoff)
   
-  #Here add that it needs to have the same scalefactor?? Cause like.. yeah 
-  
   recall_df <- tibble(
     cell=rownames(recall_cor),
     clone_original=cell_clones,
@@ -1761,11 +1752,9 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
       # clone_original_annot == clone_recall & !clone_original_annot %in% c("unassigned", "replicating") ~ "grey",
       clone_original_annot == clone_recall ~ "grey",
       TRUE ~ clone_original_annot
-    ), 
-    scalefactor=data$cells$correct_scalefactor
+    )
   )
-
-   
+  
   recall_df_stats <- recall_df %>% 
     group_by(clone_original_annot) %>% 
     summarize(n=n(), pass=sum(pass_cutoff), fail=sum(!pass_cutoff))
@@ -1840,40 +1829,21 @@ recall_cells <- function(data, from="0", mad_cutoff=5, segs_slot=NULL, clone_slo
   
   data$cells$recall_dist[match_idx] <- l.recall_dist
   data$cells$recall_prob[match_idx] <- l.recall_prob
- 
-  #Addition 250603
-  mean_scalefactors <- recall_df %>%
-    filter(!is.na(clone_original), pass_cutoff) %>%
-    group_by(clone_original) %>%
-    summarise(mean_scale_recall = mean(scalefactor, na.rm = TRUE), .groups = "drop") 
-  
-  colnames(mean_scalefactors)<-c("clone_recall", "mean_scale_recall")
-  # Step 2: Join the mean scalefactor (from clone_recall clones) to recall_df
-  recall_df <- recall_df %>%
-    left_join(mean_scalefactors, by = "clone_recall")
-  
-  # Step 3: Apply the updated clone_recall logic
-  recall_df.f <- recall_df %>%
-    mutate(clone_recall = case_when(
-      pass_cutoff &
-        clone_original %in% from &
-        abs(scalefactor - mean_scale_recall) <= 0.3 ~ clone_recall,
+  recall_df.f <- recall_df %>% 
+    mutate(clone_recall=case_when(
+      pass_cutoff & clone_original %in% from ~ clone_recall,
       TRUE ~ clone_original
     ))
-  
-  # recall_df.f <- recall_df %>% 
-  #   mutate(clone_recall=case_when(
-  #     pass_cutoff & clone_original %in% from ~ clone_recall,
-  #     TRUE ~ clone_original
-  #   ))
   data$cells$clone_recall[match_idx] <- recall_df.f$clone_recall
   
   cat("Final recall:\n")
   print(table("original"=data$cells[[clone_slot]], "recall"=data$cells$clone_recall,useNA="always"))
+  
   if(update_clones) data <- update_clone_metrics(data, clone_slot=clone_slot, calc_cn=TRUE, ...)
   
   return(data)
 }
+
 
 rank_to_prob_exp <- function(distances, decay_rate = 1) {
   # Get ranks
@@ -1887,7 +1857,7 @@ rank_to_prob_exp <- function(distances, decay_rate = 1) {
   return(probs)
 }
 
-calc_cell_cn <- function(data, cell_idx=NULL, filter_segs=FALSE, cells_slot="gcmap_normal", segs_slot=NULL, clone_slot=NULL){
+calc_cell_cn <- function(data, cell_idx=NULL, filter_segs=FALSE, cells_slot="gcmap_normal", segs_slot=NULL, clone_slot=NULL, scale_range=c(1.5,4.5)){
   try(RhpcBLASctl::blas_set_num_threads(1))
   try(RhpcBLASctl::omp_set_num_threads(1))
   if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])]
@@ -1901,6 +1871,18 @@ calc_cell_cn <- function(data, cell_idx=NULL, filter_segs=FALSE, cells_slot="gcm
   
   segs <- data[["segments"]][[segs_slot]]
   bins <- data[["bins"]][["good"]]
+  s <- seq(scale_range[1], scale_range[2], length.out=100)
+  
+  # prepare slots
+  if(is.null(data[["cells"]][[cells_slot]])) data[["cells"]][[cells_slot]] <- list(NULL)
+  if(is.null(data[["cells"]][["norm_segs"]])) data[["cells"]][["norm_segs"]] <- list(NULL)
+  if(is.null(data[["cells"]][["scale_tests"]])) data[["cells"]][["scale_tests"]] <- list(NULL)
+  if(is.null(data[["cells"]][["scale_factor"]])) data[["cells"]][["scale_factor"]] <- list(NULL)
+  if(is.null(data[["cells"]][["cn"]])) data[["cells"]][["cn"]] <- list(NULL)
+  if(is.null(data[["cells"]][["residuals"]])) data[["cells"]][["residuals"]] <- list(NULL)
+  
+  # Unless specific cells specified, run all of them
+  # If set to TRUE (length==1) convert to full length vector (all cells), to avoid potential which/indexing issues
   if((length(cell_idx)==1 & is.logical(cell_idx)) | is.null(cell_idx)) cell_idx <- rep(TRUE, nrow(data[["cells"]]))
   clone_idx <- norm_idx <- cn_idx <- cell_idx
   cat(sprintf("Running %s cells from custom index", sum(cell_idx)),"\n")
@@ -1926,24 +1908,16 @@ calc_cell_cn <- function(data, cell_idx=NULL, filter_segs=FALSE, cells_slot="gcm
     r
   })
   data[["cells"]][["segment_bins"]][cn_idx] <- lapply(data[["cells"]][["segment_means"]][cn_idx], function(x) rep(x, segs$n.probes))
-  # data[["cells"]][["scale_tests"]][cn_idx] <- mclapply(data[["cells"]][["segment_bins"]][cn_idx], function(x){
-  #   sapply(s, function(sf) manhattan.dist(sf, x, na.rm = T))
-  # }, mc.cores=threads)
-  # data[["cells"]][["scale_factor"]][cn_idx] <- lapply(data[["cells"]][["scale_tests"]][cn_idx], function(x) s[which.min(x)])
-  # 
-  
-  for (i in which(cn_idx)) {
-    val <- data[["cells"]]$correct_scalefactor[i]
-    if (!is.na(val)) {
-      data[["cells"]]$scale_factor[[i]] <- val
-    }
-  }
-  
+  data[["cells"]][["scale_tests"]][cn_idx] <- mclapply(data[["cells"]][["segment_bins"]][cn_idx], function(x){
+    sapply(s, function(sf) manhattan.dist(sf, x, na.rm = T))
+  }, mc.cores=threads)
+  data[["cells"]][["scale_factor"]][cn_idx] <- lapply(data[["cells"]][["scale_tests"]][cn_idx], function(x) s[which.min(x)])
   data[["cells"]][["cn"]][cn_idx] <- lapply(which(cn_idx), function(i){
     round(data[["cells"]][["segment_bins"]][[i]] * data[["cells"]][["scale_factor"]][[i]])
   })
   return(data)
 }
+
 
 
 
@@ -2278,7 +2252,7 @@ plot_cell_heatmap <- function(data, filtered=TRUE, clone_slot=NULL, segs_slot=NU
     df = annot_data,
     col = annot_colors,
     recall = recall_data,
-    #reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
+    reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
     show_legend=T,
     annotation_name_gp = gpar(fontsize=8),
     na_col = "white"
@@ -2692,9 +2666,6 @@ remove_bad_cells <- function(data, max_diff_bins=NULL, min_seg_size=500, clone_s
     )
   # data$cells$clone_final
   print(table("old"=data$cells[[clone_slot]], "new"=data$cells$clone_final))
-  #Update 250707
-  data[["clones"]] <- data[["clones"]] %>%
-    filter(clone_id %in% names(table(data$cells$clone_final))) 
   data <- update_clone_metrics(data, clone_slot=clone_slot, calc_cn=TRUE, ...)
   return(data)
 }
@@ -2713,13 +2684,14 @@ remove_small_clones <- function(data, clone_slot=NULL,  min_size_clone=min_size_
   cat("Small clone - moved to zero: ")
   print(clone_to_zero)
   
+  #This is kinda wrong? or maybe not but like yes i need the clone_clean to become the last in the row at least 
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
   #Needs to change so that it's clone_clean higher number 
   new_clones.name
   nr<-length(which(grepl("clone_clean", colnames(data[["cells"]]))))
   data[["cells"]][[paste0("clone_clean", 1+nr)]] <- mgsub::mgsub(data[["cells"]][[clone_slot]], paste0("^", clone_to_zero, "$"), c(rep("0", length(clone_to_zero))))
   
-  #Then clone_update 
+  #THen clone_updates to data somehow 
   data[["clones"]] <- data[["clones"]] %>%
     filter(clone_id %in% new_clones.name) 
   return(data)

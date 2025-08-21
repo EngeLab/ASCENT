@@ -43,8 +43,7 @@ good.bins <- gc > gc_min & map > map_min & ! bins$bin_unfilt %in% badbins$bin_un
 # Filtered
 bins.f <- bins[good.bins,]
 bins.f$bin <- seq_along(bins.f$chr)
-#counts.f <- counts[good.bins]
-counts.f <- counts
+counts.f <- counts[good.bins]
 gc.f <- gc[good.bins]
 map.f <- map[good.bins]
 
