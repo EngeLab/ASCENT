@@ -19,10 +19,75 @@ source("workflow/scripts/clone_functions_forPaper.R")
 
 cn_obj<-snakemake@input[["cn_obj"]]
 d <- read_rds(cn_obj)
+#Get segment and clone information Make local index for segments for matching with blocks
+segs <- d$segments[[segs_slot]] %>% mutate(seg_idx=1:nrow(.))
+cn_clones <- do.call(cbind, d$clones$cn)[d$segments[[segs_slot]]$start,]
+colnames(cn_clones) <- d$clones$clone_id
+dim(cn_clones)
+nrow(segs) == nrow(cn_clones)
+head(cn_clones)
+head(segs)
 
 clones <- d$cells %>% 
   filter(!is.na(clone_final)) %>% 
   select(cell=dna_library_id, clone=clone_final)
+
+#Read in all snps
+hom<-read.table(snakemake@input[["LOH"]],comment.char = "#", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+
+hom2 <- hom %>%
+  mutate(
+    AD = as.numeric(str_extract(V8, "(?<=AD=)[0-9]+")),
+    DP = as.numeric(str_extract(V8, "(?<=DP=)[0-9]+")),
+    DP_minus_AD = DP - AD,
+    GT = str_extract(V10, "^[^:]+"),
+    zygosity = case_when(
+      GT %in% c("0/1", "1/0") ~ "HET",
+      GT %in% c("0/0", "1/1") ~ "HOM",
+      TRUE ~ "other"
+    )
+  )
+
+#Create granges objects so that we can intersect and get snp per segment 
+snp_gr <- GRanges(seqnames = hom2$V1, ranges = IRanges(start = hom2$V2, end = hom2$V2), zygosity = hom2$zygosity)
+seg_gr <- GRanges(seqnames = segs$chr, ranges = IRanges(start = segs$start.pos, end = segs$end.pos))
+hits <- findOverlaps(snp_gr, seg_gr)
+snp_with_seg <- data.frame(seg_idx = subjectHits(hits),zygosity = mcols(snp_gr[queryHits(hits)])$zygosity)
+
+#HET and HOM SNPs per segment
+zygosity_summary <- snp_with_seg %>%
+  group_by(seg_idx, zygosity) %>%
+  summarise(count = n(), .groups = "drop") %>%
+  tidyr::pivot_wider(names_from = zygosity, values_from = count, values_fill = 0) %>%
+  mutate(
+    total = HET + HOM,
+    het_ratio = ifelse(total == 0, NA, HET / total)
+  )
+
+#Identify segments with complete LOH: 
+final <- left_join(segs, zygosity_summary)
+
+chrom_palette <- c(
+  "chr1" = "#1b9e77",  "chr2" = "#d95f02",  "chr3" = "#7570b3",  "chr4" = "#e7298a",
+  "chr5" = "#66a61e",  "chr6" = "#e6ab02",  "chr7" = "#a6761d",  "chr8" = "#666666",
+  "chr9" = "#1f78b4",  "chr10" = "#b2df8a", "chr11" = "#33a02c", "chr12" = "#fb9a99",
+  "chr13" = "#ff7f00", "chr14" = "#cab2d6", "chr15" = "#6a3d9a", "chr16" = "#ffff99",
+  "chr17" = "#b15928", "chr18" = "#fdbf6f", "chr19" = "#a6cee3", "chr20" = "#bc80bd",
+  "chr21" = "#ccebc5", "chr22" = "#ffed6f", "chrX" = "#8dd3c7",  "chrY" = "#fb8072"
+)
+
+threshold <- quantile(final$het_ratio, 0.9, na.rm = TRUE)/10
+png(snakemake@output[["loh_region"]]) 
+ggplot(final, aes(x = seg_idx, y = het_ratio, col = chr)) +
+  geom_point() +
+  theme_dntr(axis_ticks=TRUE) +
+  geom_hline(yintercept = threshold, linetype = "dashed") +
+  scale_color_manual(values = chrom_palette)
+dev.off()
+#
+final$LOH<-final$het_ratio<threshold
+LOH_segments<-final%>%filter(LOH==TRUE)
+
 
 snps.all <- read_tsv(snakemake@input[["phasing"]], col_names=c("chr","pos","cell","hapA_count","hapB_count")) %>% 
   left_join(clones, by="cell") %>% 
@@ -68,15 +133,7 @@ blocks <- mclapply(snps.l, function(x){
   block_snps(x, block_size=50000, min_snps_global=0, min_snps_clone=0)
 })
 
-# 2. Get segments + cn integers. Make local index for segments for matching with blocks
-# segs <- d$segments[[segs_slot]] %>% select(1:4) %>% mutate(seg_idx=1:nrow(.))
-segs <- d$segments[[segs_slot]] %>% mutate(seg_idx=1:nrow(.))
-cn_clones <- do.call(cbind, d$clones$cn)[d$segments[[segs_slot]]$start,]
-colnames(cn_clones) <- d$clones$clone_id
-dim(cn_clones)
-nrow(segs) == nrow(cn_clones)
-head(cn_clones)
-head(segs)
+# 2. Group blocks into segments
 segs.l <- split(segs, segs$chr)[names(blocks)] # subset to same chr with allelic info
 
 # segments with no SNPs are left out
@@ -377,7 +434,7 @@ s1 <- ba.sl[[plot_chr]] %>%
   scale_y_continuous(expand=c(0.05, 0.05), limits=c(0,1)) + labs(title=paste0(plot_chr, ", haplotyped/fixed, no snp filter"), breaks=pretty_breaks())
 s1
 # Show next to cn plot of same chr
-plot_clone_detail(d, region="chr12p", cn.trunc = 8) + s1
+#plot_clone_detail(d, region="chr12p", norm="gcmap", cn.trunc = 8) + s1
 
 # 2. Plot summary cn x correctedBAF, per clone. Each point is a segment
 switched.segs$clone_ordered <- factor(switched.segs$clone, levels = clone_order)
@@ -429,39 +486,101 @@ min_gt_prob <- 0.97 # or something (max 1)
 
 switched.segs$chr <- factor(switched.segs$chr, levels=levels(segs$chr))
 ss.l <- split(switched.segs, switched.segs$clone)
+
 baf_segs.l <- lapply(ss.l, function(x) {
   cl <- x$clone[1]
-  x %>% 
-    full_join(segs, by = c("seg_id" = "seg_idx", "chr")) %>% 
-    arrange(seg_id) %>% 
-    select(chr, arm, start.pos, end.pos, n.probes, everything(), -clone_ordered) %>% 
+  x %>%
+    full_join(segs, by = c("seg_id" = "seg_idx", "chr")) %>%
+    arrange(seg_id) %>%
+    select(chr, arm, start.pos, end.pos, n.probes, everything(), -clone_ordered) %>%
     mutate(
       clone = ifelse(is.na(clone), cl, clone), # Segments without SNP blocks will have clone NA
       cn = ifelse(is.na(cn), cn_clones[seg_id, cl], cn),
       filter_seg = seg_snps < min_snp_segment | is.na(seg_snps),
       BAF_final = case_when(
-        cn == 0 | chr == "chrY" ~ 0, 
-        filter_seg & !is.na(cn) & is.na(BAF) ~ floor(cn/2)/cn, 
-        # chr == "chrX" & !is.na(cn) & is.na(BAF) ~ floor(cn/2)/cn, 
-        # cn > 0 & filter_seg ~ floor(cn/2)/cn,
+        cn == 0 | chr == "chrY" ~ 0,
+        filter_seg & !is.na(cn) & is.na(BAF) ~ floor(cn / 2) / cn,
         TRUE ~ cBAF
       ),
-      # Default allele-specific copy numbers
       cn_a_orig = round((1 - BAF_final) * cn),
       cn_b_orig = cn - cn_a_orig,
       pass = !is.na(cn) & cn > 0 & !filter_seg & !is.na(cA) & !is.na(cB)
-    ) %>% 
+    ) %>%
     mutate(
       gt_test = pmap(list(cA, cB, cn, pass), function(A, B, cn, pass) {
-        if(pass) calc_gt_prob(A, B, cn, err = error_rate, dynamic_error = TRUE, max_multiplier = error_multiplier)
+        if (pass) {
+          calc_gt_prob(A, B, cn, err = error_rate, dynamic_error = TRUE, max_multiplier = error_multiplier)
+        } else {
+          NULL
+        }
       }),
-      gt_res = map(gt_test, ~ if(!is.null(.x)) get_gt(.x) else NULL),
-      gt = map_chr(gt_res, ~ if(!is.null(.x)) .x$best_genotype else NA),
-      gt_prob = map_dbl(gt_res, ~ if(is.null(.x)) NA_real_ else .x$probability),
-      cn_a = map2_int(gt, gt_prob, function(gt, prob) if(is.na(gt) | prob < min_gt_prob) NA else stringr::str_count(gt, "A")),
-      cn_b = map2_int(gt, gt_prob, function(gt, prob) if(is.na(gt) | prob < min_gt_prob) NA else stringr::str_count(gt, "B"))
+      gt_res = map(gt_test, ~ if (!is.null(.x)) get_gt(.x) else NULL),
+      
+      # Improved gt with fallback for LOH segments
+      gt = pmap_chr(list(gt_res, seg_id, cn_a_orig, cn_b_orig), function(res, sid, a_orig, b_orig) {
+        if (!is.null(res)) {
+          res$best_genotype
+        } else if (sid %in% LOH_segments$seg_idx) {
+          paste0(strrep("A", a_orig), strrep("B", b_orig))
+        } else {
+          NA_character_
+        }
+      }),
+      
+      gt_prob = pmap_dbl(list(gt_res, seg_id), function(res, sid) {
+        if (!is.null(res)) {
+          res$probability
+        } else if (sid %in% LOH_segments$seg_idx) {
+          1  # Trust the fallback genotype
+        } else {
+          NA_real_
+        }
+      }),
+      
+      cn_a = pmap_int(list(gt, gt_prob, seg_id), function(gt, prob, sid) {
+        if (is.na(gt)) {
+          NA_integer_
+        } else if (sid %in% LOH_segments$seg_idx) {
+          str_count(gt, "A")
+        } else if (prob < min_gt_prob) {
+          NA_integer_
+        } else {
+          str_count(gt, "A")
+        }
+      }),
+      
+      cn_b = pmap_int(list(gt, gt_prob, seg_id), function(gt, prob, sid) {
+        if (is.na(gt)) {
+          NA_integer_
+        } else if (sid %in% LOH_segments$seg_idx) {
+          str_count(gt, "B")
+        } else if (prob < min_gt_prob) {
+          NA_integer_
+        } else {
+          str_count(gt, "B")
+        }
+      })
     )
 })
+
+#Here we adjust the previously identified clonal LOH areas 
+
+baf_segs.l <- lapply(baf_segs.l, function(df) {
+  df %>%
+    mutate(
+      cn_a = if_else(
+        seg_id %in% LOH_segments$seg_id & !(is.na(cn_a) & is.na(cn_b)),
+        cn_a + cn_b,
+        cn_a
+      ),
+      cn_b = if_else(
+        seg_id %in% LOH_segments$seg_id & !(is.na(cn_a) & is.na(cn_b)),
+        0L,  # use 0L for integer column
+        cn_b
+      )
+    )
+})
+
 
 bafs <- bind_rows(baf_segs.l)
 

@@ -36,9 +36,7 @@ pval.ploidy <- function(xmat, ploidy.rates) {
   p.double <- dpois(x=round(sum(xmat$numOverlaps)), lambda=sum(ploidy.rates[xmat$ploidy*2] * xmat$nr_bins*binsize/overlapSize), log=T)
   p.half <- dpois(x=round(sum(xmat$numOverlaps)), lambda=sum(ploidy.rates[round(xmat$ploidy*0.5001)] * xmat$nr_bins*binsize/overlapSize), log=T)
   
-  #lods.up <- cur.p-p.double
   lods.up <- p.double-cur.p
-  #lods.down <- cur.p-p.half
   lods.down <- p.half-cur.p
   setNames(c(cur.p, lods.up, lods.down), nm=c("logp.dens", "lods.up", "lods.down"))
 }
