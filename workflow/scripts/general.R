@@ -51,17 +51,23 @@ theme_dntr <- function (font_size = 14, font_family = "Helvetica", line_size = 0
     small_rel <- 0.857
     small_size <- small_rel * font_size
     th <- theme_grey(base_size = font_size, base_family = font_family) %+replace% 
-        theme(panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "black", size=1), 
-              legend.justification = "top", legend.background = element_blank(), legend.key = element_blank(),
-              legend.key.size = unit(1, "lines"), strip.background = element_blank(), strip.text=element_text(hjust=0,size=12),
-              rect = element_rect(fill = "transparent", color = "black", linewidth = 1, linetype = "solid"), axis.line = element_blank(),
-              text = element_text(family = font_family, face = "plain", color = "black", size = font_size, hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9, margin = margin(), debug = FALSE),
-              # axis.text.x = element_text(color="black", margin = margin(t = small_size/4), vjust = 1), 
-              # axis.text.y = element_text(color="black", margin = margin(r = small_size/4), hjust = 1), 
-              axis.title.x = element_text(size=ifelse(axis_labels,NA,0), margin = margin(t = small_size/4, b = small_size/4)),
-              axis.title.y = element_text(size=ifelse(axis_labels,NA,0), angle = 90, margin = margin(r = small_size/4, l = small_size/4)), 
-              axis.ticks = element_line(linewidth=ifelse(axis_ticks,0.5,0)),
-              axis.text = element_text(size=ifelse(axis_ticks,NA,0), margin = margin(t = small_size/4, b = small_size/4)))
+      theme(
+        panel.background = element_blank(),
+        panel.border = element_rect(fill = NA, colour = "black", linewidth = 1),
+        legend.justification = "top",
+        legend.background = element_blank(),
+        legend.key = element_blank(),
+        legend.key.size = unit(1, "lines"),
+        strip.background = element_blank(),
+        strip.text = element_text(hjust = 0, size = 12),
+        rect = element_rect(fill = "transparent", color = "black", linewidth = 1, linetype = "solid"),
+        axis.line = element_blank(),
+        text = element_text(family = font_family, face = "plain", color = "black", size = font_size, hjust = 0.5, vjust = 0.5, lineheight = 0.9),
+        axis.title.x = if (axis_labels) element_text(size = font_size, margin = margin(t = small_size/4, b = small_size/4)) else element_blank(),
+        axis.title.y = if (axis_labels) element_text(size = font_size, angle = 90, margin = margin(r = small_size/4, l = small_size/4)) else element_blank(),
+        axis.ticks = if (axis_ticks) element_line(linewidth = 0.5) else element_blank(),
+        axis.text = if (axis_ticks) element_text(size = font_size * 0.8, margin = margin(t = small_size/4, b = small_size/4)) else element_blank()
+      ) 
     if(legend=="bottom"){
         th <- th %+replace%
             theme(legend.position="bottom", legend.direction = "horizontal")

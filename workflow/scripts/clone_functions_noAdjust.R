@@ -139,17 +139,23 @@ theme_dntr <- function (font_size = 14, font_family = "Helvetica", line_size = 0
   small_rel <- 0.857
   small_size <- small_rel * font_size
   th <- theme_grey(base_size = font_size, base_family = font_family) %+replace% 
-    theme(panel.background = element_blank(), panel.border = element_rect(fill = NA, colour = "black", linewidth=1), 
-          legend.justification = "top", legend.background = element_blank(), legend.key = element_blank(),
-          legend.key.size = unit(1, "lines"), strip.background = element_blank(), strip.text=element_text(hjust=0,size=12),
-          rect = element_rect(fill = "transparent", color = "black", linewidth = 1, linetype = "solid"), axis.line = element_blank(),
-          text = element_text(family = font_family, face = "plain", color = "black", size = font_size, hjust = 0.5, vjust = 0.5, angle = 0, lineheight = 0.9, margin = margin(), debug = FALSE),
-          # axis.text.x = element_text(color="black", margin = margin(t = small_size/4), vjust = 1), 
-          # axis.text.y = element_text(color="black", margin = margin(r = small_size/4), hjust = 1), 
-          axis.title.x = element_text(size=ifelse(axis_labels,NA,0), margin = margin(t = small_size/4, b = small_size/4)),
-          axis.title.y = element_text(size=ifelse(axis_labels,NA,0), angle = 90, margin = margin(r = small_size/4, l = small_size/4)), 
-          axis.ticks = element_line(linewidth=ifelse(axis_ticks,0.5,0)),
-          axis.text = element_text(size=ifelse(axis_ticks,NA,0), margin = margin(t = small_size/4, b = small_size/4)))
+    theme(
+      panel.background = element_blank(),
+      panel.border = element_rect(fill = NA, colour = "black", linewidth = 1),
+      legend.justification = "top",
+      legend.background = element_blank(),
+      legend.key = element_blank(),
+      legend.key.size = unit(1, "lines"),
+      strip.background = element_blank(),
+      strip.text = element_text(hjust = 0, size = 12),
+      rect = element_rect(fill = "transparent", color = "black", linewidth = 1, linetype = "solid"),
+      axis.line = element_blank(),
+      text = element_text(family = font_family, face = "plain", color = "black", size = font_size, hjust = 0.5, vjust = 0.5, lineheight = 0.9),
+      axis.title.x = if (axis_labels) element_text(size = font_size, margin = margin(t = small_size/4, b = small_size/4)) else element_blank(),
+      axis.title.y = if (axis_labels) element_text(size = font_size, angle = 90, margin = margin(r = small_size/4, l = small_size/4)) else element_blank(),
+      axis.ticks = if (axis_ticks) element_line(linewidth = 0.5) else element_blank(),
+      axis.text = if (axis_ticks) element_text(size = font_size * 0.8, margin = margin(t = small_size/4, b = small_size/4)) else element_blank()
+    ) 
   if(legend=="bottom"){
     th <- th %+replace%
       theme(legend.position="bottom", legend.direction = "horizontal")
@@ -1525,7 +1531,12 @@ remove_bad_clones <- function(data, clone_slot=NULL, frequency=0.1, ...){
   print(clone_to_zero)
   
   new_clones.name<-data[["clones"]]$clone_id[!data[["clones"]]$clone_id%in%bad_clones]
-  data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  #data[["cells"]][["clone_clean"]]<-mgsub(data[["cells"]][[clone_slot]], (clone_to_zero), c(rep("0", length(clone_to_zero))))
+  data[["cells"]][["clone_clean"]] <- ifelse(
+    data[["cells"]][[clone_slot]] %in% clone_to_zero,
+    "0",
+    data[["cells"]][[clone_slot]]
+  )
   
   #THen clone_updates to data somehow 
   data[["clones"]] <- data[["clones"]] %>%
@@ -2307,6 +2318,162 @@ plot_cell_heatmap <- function(data, filtered=TRUE, clone_slot=NULL, segs_slot=NU
   ht <- draw(ht)
 }
 
+
+
+plot_cell_heatmap_transient <- function(data, filtered=TRUE, clone_slot=NULL, segs_slot=NULL, 
+                              smooth_bins=50, annotate=NULL, annotate_colors=NULL, 
+                              group_by=NULL, region=NULL){
+  if(is.null(clone_slot)) clone_slot <- names(data[["cells"]])[max(grep("clone_", names(data[["cells"]])))]
+  if(is.null(segs_slot)) segs_slot <- names(data[["segments"]])[length(data[["segments"]])] 
+  bins <- data$bins$good
+  bins$chr_short <- sub("chr","",bins$chr)
+  clone_idx = TRUE
+  if(filtered) clone_idx <- !is.na(data[["cells"]][[clone_slot]]) 
+  
+  cat("\nUsing clone slot:",clone_slot,"\n")
+  
+  recall_cn <- do.call(cbind, data$cells$cn[clone_idx])
+  colnames(recall_cn) <- data$cells$dna_library_id[clone_idx]
+  
+  # Parse and apply region filtering if specified
+  if(!is.null(region)) {
+    parsed_region <- parse_region(region)
+    if(!is.null(parsed_region)) {
+      # Get indices for the specified region
+      region_idx <- switch(parsed_region$type,
+                           "chromosome" = bins$chr == parsed_region$chr,
+                           "arm" = bins$chr == parsed_region$chr & 
+                             substr(bins$arm, 1, 1) == parsed_region$arm,
+                           "position" = bins$chr == parsed_region$chr & 
+                             bins$start >= parsed_region$start & 
+                             bins$end <= parsed_region$end
+      )
+      
+      if(!any(region_idx)) {
+        stop("No bins found in specified region: ", region)
+      }
+      
+      # Subset the data
+      smooth <- smooth_bins_subset(recall_cn[region_idx,], bins=bins[region_idx,], w=smooth_bins)
+      ht_mtx <- smooth$mat
+      filt_segs.all <- rep(data[["segments"]][[segs_slot]]$filtered, data[["segments"]][[segs_slot]]$n.probes)
+      filt_segs <- filt_segs.all[region_idx]
+      filt_segs.smooth <- smooth_vector(filt_segs, smooth_bins)
+    }
+  } else {
+    smooth <- smooth_bins_subset(recall_cn, bins=bins, w=smooth_bins)
+    ht_mtx <- smooth$mat
+    filt_segs <- rep(data[["segments"]][[segs_slot]]$filtered, data[["segments"]][[segs_slot]]$n.probes)
+    filt_segs.smooth <- smooth_vector(filt_segs, smooth_bins)
+  }
+  
+  # Build annotation: convert initially NA clones to annotated sets (for plotting)
+  meta <- data[["cells"]][clone_idx,]
+  # meta <- meta %>%
+  #   mutate(
+  #     pass_dna_qc = !is.na(clone_initial),
+  #     across(starts_with("clone_"), 
+  #            ~case_when(
+  #              !is.na(.) ~ .,
+  #              pass_dna_qc == FALSE ~ "fail_qc"
+  #            )))
+  
+  # Ordering by profile
+  non_clones <- c("0","S","G2M","fail_qc")
+  clone_list <- split(meta$dna_library_id, meta[[clone_slot]])
+  clones_incl <- clone_list[!names(clone_list) %in% non_clones]
+  clones_excl <- clone_list[!names(clone_list) %in% names(clones_incl)]
+  clone_medians <- lapply(clones_incl, function(i) 
+    if(length(i)==1) median(recall_cn[,i]) else Rfast::rowMedians(recall_cn[,i])
+  )
+  clone_medians.mtx <- do.call(cbind, clone_medians)
+  o <- sort_from_diploid_root(clone_medians.mtx)
+  meta[[clone_slot]] <- droplevels(factor(meta[[clone_slot]], levels=c(o, non_clones)))
+  
+  col_fun <- make_cn_colorscale(max(ht_mtx, na.rm=T))
+  chr_labels <- factor(smooth$bins$chr_short, levels=c(1:22,"X","Y"))
+  clone_vars <- grep("clone_", colnames(meta), value=TRUE)
+  clone_colors <- get_clones_col(unique(unlist(lapply(meta[, clone_vars], as.character))))
+  names(clone_colors) <- as.character(names(clone_colors))
+  recall_data <- NULL
+  if("recall_prob" %in% colnames(data$cells)){
+    recall_annot <- TRUE
+    recall_prob <- do.call(rbind, data$cells$recall_prob[clone_idx])
+    recall_colors <- clone_colors[match(colnames(recall_prob), names(clone_colors))] 
+    recall_data <- row_anno_barplot(recall_prob, gp = gpar(col=recall_colors, fill = recall_colors))
+  }
+  
+  # Dynamically add annotations
+  annot_data <- sapply(clone_vars, function(col) as.character(meta[[col]]), simplify=FALSE)
+  annot_colors <- rep(list(clone_colors), length(clone_vars))
+  names(annot_colors) <- clone_vars
+  if(!is.null(annotate) && annotate %in% colnames(meta)) {
+    annot_data[[annotate]] <- meta[[annotate]]
+    if(!is.null(annotate_colors)){
+      annot_colors[[annotate]] <- annotate_colors
+    }
+  }
+  
+  ha <- rowAnnotation(
+    df = annot_data,
+    col = annot_colors,
+    recall = recall_data,
+    reads=anno_barplot(log10(meta$bam_read_pairs), bar_width=1, border=F, baseline = "min"),
+    show_legend=T,
+    annotation_name_gp = gpar(fontsize=8),
+    na_col = "white"
+  )
+  
+  column_anno = HeatmapAnnotation(
+    masked = filt_segs.smooth,
+    col = list(masked = c("TRUE" = "red", "FALSE"=NA)),
+    show_annotation_name=FALSE
+  )
+  
+  if(!is.null(group_by)){
+    if(!group_by %in% colnames(meta)) stop(paste0("Grouping variable ",group_by, "not in metadata."))
+    group_var <- meta[[group_by]]
+  } else {
+    group_var <- meta[[clone_slot]]
+  }
+  
+  # Add 250129: Empty cells need to be set to NA
+  zero_cells <- colSums(is.na(ht_mtx)) == nrow(ht_mtx)
+  if(sum(zero_cells) > 0){
+    cat(sprintf("%d cells with NA counts excluded: %s", sum(zero_cells), paste(names(which(zero_cells)), collapse=", ")),"\n")
+    ht_mtx[is.na(ht_mtx)] <- -1
+  }
+  
+  region_title <- if(!is.null(region)) paste0(", region: ", region) else ""
+  
+  ht = Heatmap(t(ht_mtx), name="cn", col=col_fun,
+               heatmap_legend_param=list(title="cn",col_fun=col_fun, break_dist=1),
+               cluster_columns = F,
+               row_split = group_var,
+               cluster_rows= T,
+               cluster_row_slices = F,
+               row_dend_reorder = F,
+               show_row_dend = T,
+               column_split = chr_labels,
+               row_gap = unit(2, "mm"),
+               column_gap = unit(0, "mm"),
+               border=T,
+               row_title_rot = 90,
+               row_title_gp=gpar(fontsize=8),
+               column_title_gp=gpar(fontsize=8),
+               column_title_side = "bottom",
+               show_row_names = F,
+               show_column_names = F,
+               right_annotation = ha,
+               bottom_annotation = column_anno,
+               use_raster = F,
+               show_heatmap_legend=F,
+               na_col="#cccccc")
+  
+  ht <- draw(ht)
+}
+
+
 parse_region <- function(region) {
   # Check and standardize the region input
   if (is.null(region)) return(NULL)
@@ -2666,6 +2833,8 @@ remove_bad_cells <- function(data, max_diff_bins=NULL, min_seg_size=500, clone_s
     )
   # data$cells$clone_final
   print(table("old"=data$cells[[clone_slot]], "new"=data$cells$clone_final))
+  data[["clones"]] <- data[["clones"]] %>%
+    filter(clone_id %in% names(table(data$cells$clone_final))) 
   data <- update_clone_metrics(data, clone_slot=clone_slot, calc_cn=TRUE, ...)
   return(data)
 }

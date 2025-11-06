@@ -86,10 +86,10 @@ rule align_bwa:
         '''
 
 rule dna_dedup:
-    input: "{cell}.aligned.bam"
+    input: dna_dir + "/{cell}/{cell}.aligned.bam"
     output:
-        bam="{cell}.dedup.bam",
-        qc="{cell}-picard-mark_duplicates.txt"
+        bam=dna_dir + "/{cell}/{cell}.dedup.bam",
+        qc=dna_dir + "/{cell}/{cell}-picard-mark_duplicates.txt"
     params:
         tmp=config["path"]["temp"]
     threads: 2
@@ -106,8 +106,8 @@ rule dna_dedup:
         '''
 
 rule index_bam:
-    input: "{cell}.dedup.bam"
-    output: "{cell}.dedup.bam.bai"
+    input: dna_dir + "/{cell}/{cell}.dedup.bam"
+    output: dna_dir + "/{cell}/{cell}.dedup.bam.bai"
     shell: "samtools index {input}"
 
 rule index_bam_compl:
@@ -121,8 +121,15 @@ rule index_bam_compl:
 
 # Fragment creation and binning
 rule create_bed:
-    input: "{cell}.dedup.bam"
-    output: "{cell}.bed.gz"
+    '''
+    Create fragment of:
+    1. Properly paired reads (0x2) without secondary alignments (0x100)
+    2. MAPQ quality above threshold
+    3. Exclude interchromosomal pairs and insert size above threshold
+    4. Exclude overlaps with exclusion list
+    '''
+    input: dna_dir + "/{cell}/{cell}.dedup.bam"
+    output: dna_dir + "/{cell}/{cell}.bed.gz"
     params:
         blacklist=config["ref"]["blacklist"],
         min_mapq=config["dna"]["min_mapq"],
@@ -141,8 +148,11 @@ rule create_bed:
         '''
 
 rule create_scp_bed:
-    input: "{cell}.dedup.bam"
-    output: "{cell}.scp.bed.gz"
+    '''
+    Create fragment file with stricter filtering for overlap statistic calculations
+    '''
+    input: dna_dir + "/{cell}/{cell}.dedup.bam"
+    output: dna_dir + "/{cell}/{cell}.scp.bed.gz"
     params:
         blacklist=config["ref"]["blacklist"],
         min_mapq=config["dna"]["min_mapq"],
@@ -164,9 +174,9 @@ rule create_scp_bed:
 # Count fragments over bins
 rule bincount_fixed:
     input:
-        cell="{cell}.bed.gz",
+        cell=dna_dir + "/{cell}/{cell}.bed.gz",
         bins="resources/fixed-{binsize}.bed"
-    output: "{cell}-bincounts-{binsize}.tsv"
+    output: dna_dir + "/{cell}/{cell}-bincounts-{binsize}.tsv"
     params:
         cellid=lambda wildcards: os.path.basename(wildcards.cell),
         genome=config["ref"]["chr_list_intersect"]

@@ -1,10 +1,10 @@
-name: dntr
+name: ascent
 channels:
   - conda-forge
   - bioconda
   - defaults 
 dependencies:
-  - r-base=4.1.*
+  - r-base
   - snakemake-minimal
   - bcftools
   - mamba
@@ -13,9 +13,8 @@ dependencies:
   - fastqc
   - picard>=2.22.0
   - samtools>=1.18
-  - bcftools
   - trim-galore>=0.6.6
-  - bedtools=2.29.2
+  - bedtools>=2.29.2
   - prinseq>=0.20.4
   - star=2.7.7a
   - rseqc
